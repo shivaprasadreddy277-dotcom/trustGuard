@@ -13,6 +13,7 @@ const healthRouter = require('./routes/health');
 const agentsRouter = require('./routes/agents');
 const sessionsRouter = require('./routes/sessions');
 const eventsRouter = require('./routes/events');
+const securityRouter = require('./routes/security');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/agents', agentsRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/agent/events', eventsRouter);
 app.use('/api/events', eventsRouter);
+app.use('/api/security', securityRouter);
 
 // ── 404 & Error Handlers ─────────────────────────────────────────────────────
 app.use(notFoundHandler);

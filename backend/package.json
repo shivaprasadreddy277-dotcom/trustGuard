@@ -6,12 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test tests/auth.test.js tests/agents.test.js tests/sessions.test.js tests/events.test.js",
+    "test": "node --test tests/auth.test.js tests/agents.test.js tests/sessions.test.js tests/events.test.js tests/security.test.js",
     "test:auth": "node --test tests/auth.test.js",
     "test:agents": "node --test tests/agents.test.js",
     "test:sessions": "node --test tests/sessions.test.js",
     "test:events": "node --test tests/events.test.js",
-    "test:all": "node --test tests/auth.test.js tests/agents.test.js tests/sessions.test.js tests/events.test.js"
+    "test:security": "node --test tests/security.test.js",
+    "test:all": "node --test tests/auth.test.js tests/agents.test.js tests/sessions.test.js tests/events.test.js tests/security.test.js"
   },
   "keywords": [],
   "author": "",

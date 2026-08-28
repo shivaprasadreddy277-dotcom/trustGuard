@@ -22,6 +22,7 @@
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../db/pool');
 const { sendError } = require('../middleware/errorHandler');
+const { evaluateEvent } = require('../engines/securityPipeline');
 
 const VALID_DATA_SENSITIVITY = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const VALID_AUTH_STATUS = ['ALLOWED', 'DENIED', 'UNKNOWN'];
@@ -177,7 +178,7 @@ async function ingestEvent(req, res, next) {
 
     // ── 7. Session Lookup & Ownership Verification ─────────────────────────
     const sessionRes = await pool.query(
-      'SELECT id, user_id, current_trust_score FROM sessions WHERE session_id_str = $1',
+      'SELECT id, user_id, original_intent, current_trust_score FROM sessions WHERE session_id_str = $1',
       [sessionId.trim()]
     );
     if (sessionRes.rows.length === 0) {
@@ -191,13 +192,14 @@ async function ingestEvent(req, res, next) {
 
     // ── 8. Agent Lookup ────────────────────────────────────────────────────
     const agentRes = await pool.query(
-      'SELECT id FROM agents WHERE agent_id_str = $1',
+      'SELECT id, agent_id_str, permissions, current_trust_score FROM agents WHERE agent_id_str = $1',
       [agentId.trim()]
     );
     if (agentRes.rows.length === 0) {
       return sendError(res, 404, 'AGENT_NOT_FOUND', `Agent with ID ${agentId.trim()} was not found.`);
     }
-    const agentUuid = agentRes.rows[0].id;
+    const agentRecord = agentRes.rows[0];
+    const agentUuid = agentRecord.id;
 
     // ── 9. Parent Agent Lookup (Optional) ──────────────────────────────────
     let parentAgentUuid = null;
@@ -212,8 +214,27 @@ async function ingestEvent(req, res, next) {
       parentAgentUuid = parentAgentRes.rows[0].id;
     }
 
-    // ── 10. Persist Event Evidence into DB ─────────────────────────────────
-    const internalUuid = uuidv4();
+    // ── 10. Execute Security Intelligence Pipeline (Cycle 3) ───────────────
+    const securityResult = evaluateEvent({
+      eventData: {
+        eventId: eventId.trim(),
+        action: action.trim(),
+        tool: tool.trim(),
+        resource: resource.trim(),
+        dataSensitivity,
+        authorization: {
+          status: authorization.status,
+          requiredPermission,
+          grantedPermissions,
+        },
+        provenance,
+      },
+      agent: agentRecord,
+      session,
+    });
+
+    // ── 11. Persist Event Evidence into DB ─────────────────────────────────
+    const eventInternalUuid = uuidv4();
 
     await pool.query(
       `INSERT INTO agent_events (
@@ -240,7 +261,7 @@ async function ingestEvent(req, res, next) {
         $11, $12, $13, $14, $15, $16, $17, NULL
       )`,
       [
-        internalUuid,
+        eventInternalUuid,
         eventId.trim(),
         session.id,
         agentUuid,
@@ -260,30 +281,59 @@ async function ingestEvent(req, res, next) {
       ]
     );
 
-    // ── 11. Return Contract-Compliant Security Result Response ─────────────
-    // Cycle 2.4 establishes ingestion pipeline. Full intelligence evaluations execute in Cycle 3.
+    // ── 12. Persist Security Decision in DB ────────────────────────────────
+    const decisionUuid = uuidv4();
+    await pool.query(
+      `INSERT INTO security_decisions (
+        id,
+        event_id,
+        decision,
+        risk_level,
+        trust_score,
+        intent_status,
+        intent_alignment_score,
+        attack_chain_detected,
+        attack_chain_severity,
+        attack_chain_id,
+        security_signals,
+        reasons
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        decisionUuid,
+        eventInternalUuid,
+        securityResult.decision,
+        securityResult.riskLevel,
+        securityResult.trustScore,
+        securityResult.intent.status,
+        securityResult.intent.alignmentScore,
+        securityResult.attackChain.detected,
+        securityResult.attackChain.severity,
+        null,
+        JSON.stringify(securityResult.securitySignals),
+        securityResult.reasons,
+      ]
+    );
+
+    // ── 13. Update Dynamic Trust Scores in Session and Agent ───────────────
+    await pool.query(
+      'UPDATE sessions SET current_trust_score = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [securityResult.trustScore, session.id]
+    );
+    await pool.query(
+      'UPDATE agents SET current_trust_score = $1 WHERE id = $2',
+      [securityResult.trustScore, agentUuid]
+    );
+
+    // ── 14. Return Contract-Compliant Security Result Response ─────────────
     return res.status(201).json({
-      eventId: eventId.trim(),
-      decision: 'ALLOW',
-      riskLevel: dataSensitivity === 'CRITICAL' ? 'HIGH' : 'LOW',
-      trustScore: session.current_trust_score,
-      intent: {
-        status: 'ALIGNED',
-        alignmentScore: 1.0,
-      },
-      attackChain: {
-        detected: false,
-        severity: 'NONE',
-        chainId: null,
-      },
-      securitySignals: {
-        policyViolation: false,
-        intentDrift: false,
-        provenanceRisk: provenance.trustLevel === 'UNTRUSTED' ? 'HIGH' : 'LOW',
-        dataSensitivity,
-        attackChainRisk: 'NONE',
-      },
-      reasons: ['Event telemetry ingested successfully.'],
+      eventId: securityResult.eventId,
+      decision: securityResult.decision,
+      riskLevel: securityResult.riskLevel,
+      trustScore: securityResult.trustScore,
+      intent: securityResult.intent,
+      attackChain: securityResult.attackChain,
+      securitySignals: securityResult.securitySignals,
+      reasons: securityResult.reasons,
     });
   } catch (err) {
     return next(err);

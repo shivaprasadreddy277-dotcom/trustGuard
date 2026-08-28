@@ -452,19 +452,21 @@ test('18. attack_chain_id remains NULL in database at ingestion time', async () 
 });
 
 // ════════════════════════════════════════════════════════════════════════════════
-// Test 19 — No security_decisions record is created in Cycle 2.4
+// Test 19 — Security decision record is created and linked
 // ════════════════════════════════════════════════════════════════════════════════
-test('19. No security_decisions record is inserted during event ingestion', async () => {
-  const dbDecisionsBefore = await testPool.query('SELECT COUNT(*) FROM security_decisions');
-  const countBefore = parseInt(dbDecisionsBefore.rows[0].count, 10);
-
-  const payload = makeValidEventPayload({ eventId: 'evt_no_sec_dec' });
+test('19. Security decision record is created and linked to the ingested event', async () => {
+  const payload = makeValidEventPayload({ eventId: 'evt_with_sec_dec' });
   const res = await req('POST', '/api/agent/events', payload, tokenA);
   assert.equal(res.status, 201);
 
-  const dbDecisionsAfter = await testPool.query('SELECT COUNT(*) FROM security_decisions');
-  const countAfter = parseInt(dbDecisionsAfter.rows[0].count, 10);
-  assert.equal(countAfter, countBefore, 'security_decisions table count must not change');
+  const dbDecisions = await testPool.query(
+    `SELECT d.* FROM security_decisions d
+     JOIN agent_events e ON d.event_id = e.id
+     WHERE e.event_id_str = 'evt_with_sec_dec'`
+  );
+  assert.equal(dbDecisions.rows.length, 1, 'security_decisions row must be linked to event');
+  assert.ok(dbDecisions.rows[0].decision);
+  assert.ok(dbDecisions.rows[0].risk_level);
 });
 
 // ════════════════════════════════════════════════════════════════════════════════

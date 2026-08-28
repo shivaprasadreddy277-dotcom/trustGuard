@@ -23,6 +23,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../db/pool');
 const { sendError } = require('../middleware/errorHandler');
 const { evaluateEvent } = require('../engines/securityPipeline');
+const { correlateAttackChain } = require('../engines/attackChainEngine');
 
 const VALID_DATA_SENSITIVITY = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const VALID_AUTH_STATUS = ['ALLOWED', 'DENIED', 'UNKNOWN'];
@@ -233,7 +234,182 @@ async function ingestEvent(req, res, next) {
       session,
     });
 
-    // ── 11. Persist Event Evidence into DB ─────────────────────────────────
+    // ── 11. Execute Attack Chain Correlation Engine (Cycle 4) ───────────────
+    // Query historical events in this session to correlate multi-stage trajectories
+    const histEventsRes = await pool.query(
+      `SELECT
+        e.id,
+        e.event_id_str,
+        e.action,
+        e.tool,
+        e.resource,
+        e.data_sensitivity,
+        e.reported_auth_status,
+        e.provenance_source_type,
+        e.provenance_trust_level,
+        e.timestamp,
+        d.decision,
+        d.risk_level,
+        d.intent_status,
+        d.security_signals
+      FROM agent_events e
+      LEFT JOIN security_decisions d ON d.event_id = e.id
+      WHERE e.session_id = $1
+      ORDER BY e.timestamp ASC`,
+      [session.id]
+    );
+
+    const historicalEvents = histEventsRes.rows.map((row) => ({
+      id: row.id,
+      event_id_str: row.event_id_str,
+      action: row.action,
+      tool: row.tool,
+      resource: row.resource,
+      data_sensitivity: row.data_sensitivity,
+      reported_auth_status: row.reported_auth_status,
+      provenance_source_type: row.provenance_source_type,
+      provenance_trust_level: row.provenance_trust_level,
+      timestamp: row.timestamp,
+    }));
+
+    const historicalDecisions = histEventsRes.rows.map((row) => ({
+      event_id: row.id,
+      event_id_str: row.event_id_str,
+      decision: row.decision,
+      risk_level: row.risk_level,
+      intent_status: row.intent_status,
+      security_signals: row.security_signals || {},
+    }));
+
+    // Combine previous events with current incoming event & decision
+    const currentEventObj = {
+      id: 'current_event',
+      event_id_str: eventId.trim(),
+      action: action.trim(),
+      tool: tool.trim(),
+      resource: resource.trim(),
+      data_sensitivity: dataSensitivity,
+      reported_auth_status: authorization.status,
+      provenance_source_type: provenance.sourceType,
+      provenance_trust_level: provenance.trustLevel,
+      timestamp: eventTimestamp,
+    };
+
+    const currentDecisionObj = {
+      event_id: 'current_event',
+      event_id_str: eventId.trim(),
+      decision: securityResult.decision,
+      risk_level: securityResult.riskLevel,
+      intent_status: securityResult.intent.status,
+      security_signals: securityResult.securitySignals,
+    };
+
+    const chainResult = correlateAttackChain({
+      events: [...historicalEvents, currentEventObj],
+      decisions: [...historicalDecisions, currentDecisionObj],
+      session,
+      agent: agentRecord,
+    });
+
+    let chainDbUuid = null;
+    let chainPublicId = null;
+
+    if (chainResult.detected) {
+      // Check if an attack chain record already exists for this session
+      const existingChainRes = await pool.query(
+        'SELECT id, chain_id_str, severity FROM attack_chains WHERE session_id = $1 AND status = $2',
+        [session.id, 'ACTIVE']
+      );
+
+      if (existingChainRes.rows.length > 0) {
+        chainDbUuid = existingChainRes.rows[0].id;
+        chainPublicId = existingChainRes.rows[0].chain_id_str;
+
+        // Update severity and summary if escalated
+        await pool.query(
+          'UPDATE attack_chains SET severity = $1, summary = $2 WHERE id = $3',
+          [chainResult.severity, chainResult.summary, chainDbUuid]
+        );
+      } else {
+        chainDbUuid = uuidv4();
+        chainPublicId = 'chain_' + uuidv4().replace(/-/g, '').slice(0, 16);
+
+        await pool.query(
+          `INSERT INTO attack_chains (
+            id,
+            chain_id_str,
+            session_id,
+            severity,
+            status,
+            summary,
+            detected_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
+          [
+            chainDbUuid,
+            chainPublicId,
+            session.id,
+            chainResult.severity,
+            'ACTIVE',
+            chainResult.summary,
+          ]
+        );
+      }
+
+      // Associate historical events in this chain
+      await pool.query(
+        'UPDATE agent_events SET attack_chain_id = $1 WHERE session_id = $2',
+        [chainDbUuid, session.id]
+      );
+
+      // Create alert if severity is HIGH or CRITICAL (with duplicate prevention)
+      if (chainResult.severity === 'HIGH' || chainResult.severity === 'CRITICAL') {
+        const existingAlert = await pool.query(
+          'SELECT id FROM alerts WHERE attack_chain_id = $1',
+          [chainDbUuid]
+        );
+        if (existingAlert.rows.length === 0) {
+          const alertUuid = uuidv4();
+          const alertIdStr = 'al_' + uuidv4().replace(/-/g, '').slice(0, 8);
+          await pool.query(
+            `INSERT INTO alerts (
+              id,
+              alert_id_str,
+              attack_chain_id,
+              agent_id,
+              severity,
+              type,
+              title,
+              description,
+              status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+              alertUuid,
+              alertIdStr,
+              chainDbUuid,
+              agentUuid,
+              chainResult.severity,
+              'ATTACK_CHAIN_DETECTED',
+              `Attack Chain Detected (${chainResult.attackCategory})`,
+              chainResult.summary,
+              'UNRESOLVED',
+            ]
+          );
+        }
+      }
+
+      // Reflect in the securityResult payload
+      securityResult.attackChain = {
+        detected: true,
+        severity: chainResult.severity,
+        chainId: chainPublicId,
+      };
+      securityResult.securitySignals.attackChainRisk = chainResult.severity;
+      if (!securityResult.reasons.some((r) => r.includes('Attack chain detected'))) {
+        securityResult.reasons.push(`Attack chain detected: ${chainPublicId}`);
+      }
+    }
+
+    // ── 12. Persist Event Evidence into DB ─────────────────────────────────
     const eventInternalUuid = uuidv4();
 
     await pool.query(
@@ -258,7 +434,7 @@ async function ingestEvent(req, res, next) {
         attack_chain_id
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, NULL
+        $11, $12, $13, $14, $15, $16, $17, $18
       )`,
       [
         eventInternalUuid,
@@ -278,10 +454,11 @@ async function ingestEvent(req, res, next) {
         provenance.sourceId.trim(),
         provenance.trustLevel,
         JSON.stringify(rawMeta),
+        chainDbUuid,
       ]
     );
 
-    // ── 12. Persist Security Decision in DB ────────────────────────────────
+    // ── 13. Persist Security Decision in DB ────────────────────────────────
     const decisionUuid = uuidv4();
     await pool.query(
       `INSERT INTO security_decisions (
@@ -308,13 +485,13 @@ async function ingestEvent(req, res, next) {
         securityResult.intent.alignmentScore,
         securityResult.attackChain.detected,
         securityResult.attackChain.severity,
-        null,
+        chainDbUuid,
         JSON.stringify(securityResult.securitySignals),
         securityResult.reasons,
       ]
     );
 
-    // ── 13. Update Dynamic Trust Scores in Session and Agent ───────────────
+    // ── 14. Update Dynamic Trust Scores in Session and Agent ───────────────
     await pool.query(
       'UPDATE sessions SET current_trust_score = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [securityResult.trustScore, session.id]
@@ -324,7 +501,7 @@ async function ingestEvent(req, res, next) {
       [securityResult.trustScore, agentUuid]
     );
 
-    // ── 14. Return Contract-Compliant Security Result Response ─────────────
+    // ── 15. Return Contract-Compliant Security Result Response ─────────────
     return res.status(201).json({
       eventId: securityResult.eventId,
       decision: securityResult.decision,

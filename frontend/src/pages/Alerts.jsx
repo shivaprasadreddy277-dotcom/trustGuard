@@ -4,11 +4,9 @@ import {
   RefreshCw,
   Search,
   Filter,
-  Eye,
   AlertTriangle,
-  ShieldAlert,
   CheckCircle2,
-  Sparkles,
+  ExternalLink,
 } from 'lucide-react';
 import { alertsApi } from '../api/client';
 import RiskBadge from '../components/security/RiskBadge';
@@ -68,15 +66,15 @@ const Alerts = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold text-coral bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-              INCIDENT QUEUE
+            <span className="text-xs font-mono font-bold text-[#801C0E] bg-[#FFEBE8] px-2.5 py-0.5 rounded-full border border-[#FFC7BF]">
+              🚨 INCIDENT QUEUE
             </span>
-            <span className="text-xs text-muted">// High Priority Anomaly Triage</span>
+            <span className="text-xs text-[#8F8F8F] font-mono">// High Priority Anomaly Triage</span>
           </div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-2xl font-bold text-[#2D2D2D]">
             Security Incident Alerts
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#6B6B6B] mt-1">
             Multi-engine anomaly alarms, critical policy violation notifications, and correlated attack chain incidents.
           </p>
         </div>
@@ -95,7 +93,7 @@ const Alerts = () => {
       {/* Filter & Search Bar */}
       <div className="chains-filter-bar">
         <div className="filter-search-box">
-          <Search size={16} className="text-muted" />
+          <Search size={16} className="text-[#8F8F8F]" />
           <input
             type="text"
             placeholder="Search by alert ID, title, description..."
@@ -105,7 +103,7 @@ const Alerts = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter size={15} className="text-muted" />
+          <Filter size={15} className="text-[#8F8F8F]" />
           <select
             className="filter-select"
             value={statusFilter}
@@ -129,7 +127,7 @@ const Alerts = () => {
       <div className="editorial-card">
         <div className="card-editorial-head">
           <h3>
-            <Bell size={18} className="text-coral" />
+            <Bell size={18} className="text-[#FF8B7B]" />
             <span>Incident Queue ({filteredAlerts.length})</span>
           </h3>
         </div>
@@ -141,7 +139,7 @@ const Alerts = () => {
           </div>
         ) : filteredAlerts.length === 0 ? (
           <div className="empty-state-card">
-            <CheckCircle2 size={36} className="text-emerald-600 mx-auto" />
+            <CheckCircle2 size={36} className="text-[#0E5E41] mx-auto" />
             <p>No unresolved security alerts. All agent activities are within normal policy parameters.</p>
           </div>
         ) : (
@@ -161,30 +159,31 @@ const Alerts = () => {
               <tbody>
                 {filteredAlerts.map((al) => (
                   <tr key={al.alertId}>
-                    <td className="mono-val font-semibold text-indigo">{al.alertId}</td>
+                    <td className="mono-val font-semibold text-[#48267E]">{al.alertId}</td>
                     <td>
                       <RiskBadge risk={al.severity || 'HIGH'} />
                     </td>
                     <td>
-                      <span className="font-bold text-xs text-slate-800">{al.type}</span>
+                      <span className="font-bold text-xs text-[#2D2D2D]">{al.type}</span>
                     </td>
                     <td>
                       <div>
-                        <div className="font-bold text-xs text-slate-900">{al.title}</div>
-                        <div className="text-xs text-slate-600 mt-0.5">{al.description}</div>
+                        <div className="font-bold text-xs text-[#2D2D2D]">{al.title}</div>
+                        <div className="text-xs text-[#6B6B6B] mt-0.5">{al.description}</div>
                       </div>
                     </td>
                     <td>
                       {al.chainId ? (
                         <button
                           type="button"
-                          className="btn-link text-xs font-extrabold text-coral"
+                          className="btn btn-secondary btn-xs"
                           onClick={() => handleOpenChain(al.chainId)}
                         >
-                          {al.chainId} →
+                          <ExternalLink size={12} />
+                          <span className="mono-val">{al.chainId}</span>
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-400">None</span>
+                        <span className="text-xs text-[#8F8F8F]">Single Event</span>
                       )}
                     </td>
                     <td>
@@ -193,11 +192,11 @@ const Alerts = () => {
                           al.status === 'RESOLVED' ? 'status-resolved' : 'status-unresolved'
                         }`}
                       >
-                        ● {al.status}
+                        ● {al.status || 'UNRESOLVED'}
                       </span>
                     </td>
-                    <td className="text-xs text-slate-500">
-                      {new Date(al.createdAt || Date.now()).toLocaleTimeString()}
+                    <td className="text-xs text-[#8F8F8F]">
+                      {al.createdAt ? new Date(al.createdAt).toLocaleTimeString() : 'Just now'}
                     </td>
                   </tr>
                 ))}
@@ -207,15 +206,17 @@ const Alerts = () => {
         )}
       </div>
 
-      {/* Attack Chain Modal */}
-      <AttackChainDetailModal
-        isOpen={isChainModalOpen}
-        chainId={selectedChainId}
-        onClose={() => {
-          setIsChainModalOpen(false);
-          setSelectedChainId(null);
-        }}
-      />
+      {/* Attack Chain Investigation Modal */}
+      {isChainModalOpen && selectedChainId && (
+        <AttackChainDetailModal
+          chainId={selectedChainId}
+          isOpen={isChainModalOpen}
+          onClose={() => {
+            setIsChainModalOpen(false);
+            setSelectedChainId(null);
+          }}
+        />
+      )}
     </div>
   );
 };

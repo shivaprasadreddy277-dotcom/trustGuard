@@ -7,7 +7,8 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
-  Sparkles,
+  FileText,
+  Activity,
 } from 'lucide-react';
 import { eventsApi, securityApi, agentsApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
@@ -92,15 +93,15 @@ const Decisions = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-              DECISION CENTER
+            <span className="text-xs font-mono font-bold text-[#6A4D00] bg-[#FFF5DD] px-2.5 py-0.5 rounded-full border border-[#FFE29E]">
+              ⚖ DECISION CENTER
             </span>
-            <span className="text-xs text-muted">// Authoritative Verdicts & Multi-Engine Signals</span>
+            <span className="text-xs text-[#8F8F8F] font-mono">// Authoritative Verdicts & Multi-Engine Signals</span>
           </div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-2xl font-bold text-[#2D2D2D]">
             Security Decision & Risk Center
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#6B6B6B] mt-1">
             Every action decision is backed by Policy, Provenance, Intent Integrity, Risk Scoring, and Dynamic Trust calculations.
           </p>
         </div>
@@ -119,7 +120,7 @@ const Decisions = () => {
       {/* Filter Bar */}
       <div className="chains-filter-bar">
         <div className="filter-search-box">
-          <Search size={16} className="text-muted" />
+          <Search size={16} className="text-[#8F8F8F]" />
           <input
             type="text"
             placeholder="Search by event ID, action, target resource, tool..."
@@ -129,7 +130,7 @@ const Decisions = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter size={15} className="text-muted" />
+          <Filter size={15} className="text-[#8F8F8F]" />
           <select
             className="filter-select"
             value={decisionFilter}
@@ -154,7 +155,7 @@ const Decisions = () => {
       <div className="editorial-card">
         <div className="card-editorial-head">
           <h3>
-            <ShieldAlert size={18} className="text-indigo" />
+            <ShieldAlert size={18} className="text-[#FFC857]" />
             <span>Arbitrated Decisions Feed ({filteredEvents.length})</span>
           </h3>
         </div>
@@ -181,102 +182,107 @@ const Decisions = () => {
               return (
                 <div
                   key={evt.eventId}
-                  className={`border rounded-xl p-4 bg-surface transition-all shadow-sm ${
+                  className={`border rounded-2xl transition-all duration-200 overflow-hidden ${
                     verdict === 'BLOCK'
-                      ? 'border-rose-300 bg-rose-50/20'
+                      ? 'border-[#FF8B7B] bg-[#FEECEB]'
                       : verdict === 'REVIEW'
-                      ? 'border-amber-300 bg-amber-50/20'
-                      : 'border-slate-200'
+                      ? 'border-[#FDE68A] bg-[#FEF7EA]'
+                      : 'border-[#EBEAE6] bg-[#FFFFFF]'
                   }`}
                 >
+                  {/* Summary Bar */}
                   <div
-                    className="flex items-center justify-between cursor-pointer"
+                    className="p-4 flex items-center justify-between flex-wrap gap-4 cursor-pointer"
                     onClick={() => toggleExpand(evt.eventId)}
                   >
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <DecisionBadge decision={verdict} />
-                      <RiskBadge risk={risk} />
-                      <span className="mono-val font-semibold text-xs text-indigo">{evt.eventId}</span>
-                      <span className="text-xs text-slate-400">
-                        {new Date(evt.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-600 font-bold">
-                        {isExpanded ? 'Hide Forensics ▲' : 'Expand Forensics ▼'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Summary row */}
-                  <div className="mt-2 text-xs text-slate-700 flex items-center gap-4 flex-wrap">
-                    <span>
-                      Agent: <strong className="text-indigo">{evt.agentId || 'agent_001'}</strong>
-                    </span>
-                    <span>
-                      Action: <strong>{evt.action}</strong>
-                    </span>
-                    <span>
-                      Tool: <strong>{evt.tool}</strong>
-                    </span>
-                    <span>
-                      Target: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">{evt.resource}</code>
-                    </span>
-                  </div>
-
-                  {/* Rationale Snippet */}
-                  {dec?.reasons && dec.reasons.length > 0 && (
-                    <div className="mt-2 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border-l-3 border-indigo-500 font-medium">
-                      <strong>Arbitration Rationale:</strong> {dec.reasons[0]}
-                    </div>
-                  )}
-
-                  {/* Expanded Breakdown */}
-                  {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <PolicyResultCard
-                          requiredPermission={
-                            dec?.policy?.requiredPermission || evt.authorization?.requiredPermission
-                          }
-                          registeredPermissions={
-                            agent?.permissions || dec?.policy?.registeredPermissions || []
-                          }
-                          reportedAuthStatus={
-                            dec?.policy?.reportedAuthStatus || evt.authorization?.status
-                          }
-                          reportedGrantedPermissions={
-                            dec?.policy?.reportedGrantedPermissions ||
-                            evt.authorization?.grantedPermissions ||
-                            []
-                          }
-                          policyViolation={
-                            dec?.securitySignals?.policyViolation || dec?.policy?.violation || false
-                          }
-                          reason={dec?.reasons?.find((r) => r.toLowerCase().includes('policy'))}
-                        />
-
-                        <ProvenanceResultCard
-                          sourceType={dec?.provenance?.sourceType || evt.provenance?.sourceType}
-                          sourceId={dec?.provenance?.sourceId || evt.provenance?.sourceId}
-                          trustLevel={dec?.provenance?.trustLevel || evt.provenance?.trustLevel}
-                          provenanceRisk={dec?.provenance?.risk || (evt.provenance?.trustLevel === 'UNTRUSTED' ? 'HIGH' : 'LOW')}
-                          reason={dec?.reasons?.find((r) => r.toLowerCase().includes('provenance') || r.toLowerCase().includes('untrusted'))}
-                        />
-
-                        <IntentResultCard
-                          originalIntent={
-                            agent?.declaredObjective || 'Analyze quarterly financial telemetry'
-                          }
-                          action={evt.action}
-                          resource={evt.resource}
-                          status={dec?.intent?.status || 'ALIGNED'}
-                          alignmentScore={dec?.intent?.alignmentScore ?? 1.0}
-                          intentDrift={dec?.intent?.status === 'DRIFT'}
-                          reason={dec?.reasons?.find((r) => r.toLowerCase().includes('intent') || r.toLowerCase().includes('drift'))}
-                        />
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-white border border-[#EBEAE6] flex items-center justify-center font-mono font-bold text-xs text-[#2D2D2D]">
+                        {verdict === 'BLOCK' ? '🛡️' : '✓'}
                       </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-[#48267E]">
+                            {evt.eventId}
+                          </span>
+                          <span className="font-bold text-sm text-[#2D2D2D]">{evt.action}</span>
+                          <span className="text-xs text-[#8F8F8F] font-mono">({evt.tool})</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-[#6B6B6B] mt-0.5">
+                          <span>Agent: <strong>{agent?.name || evt.agentId}</strong></span>
+                          <span>•</span>
+                          <span>Resource: <code className="bg-white px-1.5 py-0.5 rounded border border-[#EBEAE6] text-[#07477D] font-mono">{evt.resource}</code></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <RiskBadge risk={risk} />
+                      <DecisionBadge decision={verdict} />
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-xs"
+                      >
+                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        <span>{isExpanded ? 'Hide Analysis' : 'Explain'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Deep Analysis Drawer */}
+                  {isExpanded && (
+                    <div className="p-5 border-t border-[#EBEAE6] bg-white flex flex-col gap-4">
+                      {dec ? (
+                        <>
+                          {/* Engine Diagnostic Cards Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <PolicyResultCard
+                              event={evt}
+                              agent={agent}
+                              decision={dec}
+                            />
+                            <ProvenanceResultCard
+                              provenance={evt.provenance}
+                              signals={dec.signals}
+                            />
+                            <IntentResultCard
+                              decision={dec}
+                              originalIntent={dec.originalIntent || 'Session baseline'}
+                            />
+                          </div>
+
+                          {/* Security Reasoning Box */}
+                          {dec.reasons && dec.reasons.length > 0 && (
+                            <div className="p-4 bg-[#FAF9F6] border border-[#EBEAE6] rounded-xl">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[#2D2D2D] uppercase mb-2">
+                                <FileText size={14} className="text-[#FFC857]" />
+                                <span>Authoritative Security Reasoning & Signals</span>
+                              </div>
+                              <ul className="list-disc pl-5 text-xs text-[#334155] space-y-1">
+                                {dec.reasons.map((r, i) => (
+                                  <li key={i}>{r}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Mitigation Directive */}
+                          {dec.mitigation && (
+                            <div className="p-3 bg-[#FEECEB] border border-[#FFC7BF] rounded-xl text-xs flex items-center justify-between">
+                              <span className="font-bold text-[#991B1B]">
+                                Active Mitigation: {dec.mitigation.action}
+                              </span>
+                              <span className="font-mono text-[#801C0E]">
+                                {dec.mitigation.description || 'Action was actively blocked by policy guardrail.'}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-4 text-xs text-[#8F8F8F]">
+                          <Activity className="spinner mx-auto mb-2" size={16} />
+                          Evaluating engine pipeline diagnostics...
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

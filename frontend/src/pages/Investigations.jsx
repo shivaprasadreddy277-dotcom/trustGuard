@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Search,
   RefreshCw,
   Eye,
   FileCode,
   AlertTriangle,
   Copy,
   Check,
-  Shield,
-  Sparkles,
+  FileText,
 } from 'lucide-react';
 import { eventsApi, securityApi, agentsApi, sessionsApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
@@ -71,7 +69,7 @@ const Investigations = () => {
       try {
         const dec = await securityApi.getDecision(selectedEventId);
         if (isMounted) setSecurityDecision(dec);
-      } catch (err) {
+      } catch {
         if (isMounted) setSecurityDecision(null);
       } finally {
         if (isMounted) setIsLoadingDecision(false);
@@ -100,15 +98,15 @@ const Investigations = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-              FORENSIC LAB
+            <span className="text-xs font-mono font-bold text-[#48267E] bg-[#F4EFFF] px-2.5 py-0.5 rounded-full border border-[#DFD0F7]">
+              🔬 FORENSIC LAB
             </span>
-            <span className="text-xs text-muted">// Case Evidence & Multi-Engine Chain-of-Custody</span>
+            <span className="text-xs text-[#8F8F8F] font-mono">// Case Evidence & Multi-Engine Chain-of-Custody</span>
           </div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-2xl font-bold text-[#2D2D2D]">
             Forensic Investigation Workbench
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#6B6B6B] mt-1">
             Deep-dive forensic evaluation: Event &rarr; Evidence &rarr; Policy &rarr; Provenance &rarr; Intent &rarr; Risk &rarr; Trust &rarr; Verdict.
           </p>
         </div>
@@ -137,7 +135,7 @@ const Investigations = () => {
         <div className="editorial-card" style={{ maxHeight: '720px' }}>
           <div className="card-editorial-head">
             <h3>
-              <Eye size={18} className="text-indigo" />
+              <Eye size={18} className="text-[#FFC857]" />
               <span>Select Telemetry Event ({events.length})</span>
             </h3>
           </div>
@@ -160,19 +158,19 @@ const Investigations = () => {
                     key={ev.eventId}
                     className={`p-3 rounded-xl border cursor-pointer transition-all ${
                       isSelected
-                        ? 'bg-indigo-50 border-indigo-500 shadow-sm'
-                        : 'bg-canvas-bg border-border hover:border-slate-300'
+                        ? 'bg-[#FFF5DD] border-[#FFC857] shadow-sm'
+                        : 'bg-[#FAF9F6] border-[#EBEAE6] hover:border-[#DCD9D2]'
                     }`}
                     onClick={() => setSelectedEventId(ev.eventId)}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="mono-val text-xs font-bold text-indigo">{ev.eventId}</span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="mono-val text-xs font-bold text-[#48267E]">{ev.eventId}</span>
+                      <span className="text-[11px] text-[#8F8F8F]">
                         {new Date(ev.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                    <div className="text-xs font-bold text-slate-800">{ev.action}</div>
-                    <div className="text-xs text-slate-500 truncate mono-val">{ev.resource}</div>
+                    <div className="text-xs font-bold text-[#2D2D2D]">{ev.action}</div>
+                    <div className="text-xs text-[#6B6B6B] truncate mono-val">{ev.resource}</div>
                   </div>
                 );
               })}
@@ -185,19 +183,21 @@ const Investigations = () => {
           {selectedEvent ? (
             <div>
               {/* Event Top Banner */}
-              <div className="flex items-center justify-between border-b border-border pb-4 mb-4 flex-wrap gap-3">
+              <div className="flex items-center justify-between border-b border-[#EBEAE6] pb-4 mb-4 flex-wrap gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-display text-xl font-bold text-slate-900">
+                    <h2 className="font-display text-xl font-bold text-[#2D2D2D]">
                       {selectedEvent.action}
                     </h2>
-                    <span className="mono-val text-xs text-indigo font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    <span className="mono-val text-xs text-[#48267E] font-bold bg-[#F4EFFF] px-2 py-0.5 rounded border border-[#DFD0F7]">
                       {selectedEvent.eventId}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-[#6B6B6B] mt-1">
                     Tool: <strong>{selectedEvent.tool}</strong> • Target:{' '}
-                    <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">{selectedEvent.resource}</code>
+                    <code className="font-mono bg-[#FAF9F6] border border-[#EBEAE6] px-1.5 py-0.5 rounded text-[#07477D]">
+                      {selectedEvent.resource}
+                    </code>
                   </p>
                 </div>
 
@@ -208,7 +208,7 @@ const Investigations = () => {
               </div>
 
               {/* Forensic Navigation Tabs */}
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-4 overflow-x-auto">
+              <div className="flex items-center gap-2 border-b border-[#EBEAE6] pb-2 mb-4 overflow-x-auto">
                 <button
                   type="button"
                   className={`btn btn-xs ${activeTab === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
@@ -250,129 +250,74 @@ const Investigations = () => {
               {isLoadingDecision ? (
                 <div className="loading-state">
                   <RefreshCw className="spinner" size={20} />
-                  <span>Evaluating security intelligence...</span>
+                  <span>Synthesizing multi-engine evaluation...</span>
                 </div>
-              ) : activeTab === 'JSON' ? (
-                <div className="raw-evidence-box">
-                  <div className="evidence-head">
-                    <FileCode size={16} className="text-indigo" />
-                    <h4>Authoritative Forensic JSON Evidence</h4>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-xs ml-auto"
-                      onClick={handleCopyJson}
-                    >
-                      {copied ? <Check size={13} /> : <Copy size={13} />}
-                      <span>{copied ? 'Copied' : 'Copy JSON'}</span>
-                    </button>
-                  </div>
-                  <pre className="evidence-pre">
-                    {JSON.stringify(securityDecision || selectedEvent, null, 2)}
-                  </pre>
-                </div>
-              ) : (
+              ) : securityDecision ? (
                 <div className="flex flex-col gap-4">
+                  {/* Tab View: ALL */}
                   {(activeTab === 'ALL' || activeTab === 'POLICY') && (
                     <PolicyResultCard
-                      requiredPermission={
-                        securityDecision?.policy?.requiredPermission ||
-                        selectedEvent.authorization?.requiredPermission
-                      }
-                      registeredPermissions={
-                        selectedAgent?.permissions || securityDecision?.policy?.registeredPermissions || []
-                      }
-                      reportedAuthStatus={
-                        securityDecision?.policy?.reportedAuthStatus ||
-                        selectedEvent.authorization?.status
-                      }
-                      reportedGrantedPermissions={
-                        securityDecision?.policy?.reportedGrantedPermissions ||
-                        selectedEvent.authorization?.grantedPermissions ||
-                        []
-                      }
-                      policyViolation={
-                        securityDecision?.securitySignals?.policyViolation ||
-                        securityDecision?.policy?.violation ||
-                        false
-                      }
-                      reason={securityDecision?.reasons?.find((r) => r.toLowerCase().includes('policy'))}
+                      event={selectedEvent}
+                      agent={selectedAgent}
+                      decision={securityDecision}
                     />
                   )}
 
                   {(activeTab === 'ALL' || activeTab === 'PROVENANCE') && (
                     <ProvenanceResultCard
-                      sourceType={
-                        securityDecision?.provenance?.sourceType || selectedEvent.provenance?.sourceType
-                      }
-                      sourceId={
-                        securityDecision?.provenance?.sourceId || selectedEvent.provenance?.sourceId
-                      }
-                      trustLevel={
-                        securityDecision?.provenance?.trustLevel ||
-                        selectedEvent.provenance?.trustLevel
-                      }
-                      provenanceRisk={
-                        securityDecision?.provenance?.risk ||
-                        (selectedEvent.provenance?.trustLevel === 'UNTRUSTED' ? 'HIGH' : 'LOW')
-                      }
-                      reason={securityDecision?.reasons?.find(
-                        (r) =>
-                          r.toLowerCase().includes('provenance') || r.toLowerCase().includes('untrusted')
-                      )}
+                      provenance={selectedEvent.provenance}
+                      signals={securityDecision.signals}
                     />
                   )}
 
                   {(activeTab === 'ALL' || activeTab === 'INTENT') && (
                     <IntentResultCard
-                      originalIntent={
-                        selectedSession?.originalIntent ||
-                        selectedAgent?.declaredObjective ||
-                        'Analyze quarterly financial telemetry'
-                      }
-                      action={selectedEvent.action}
-                      resource={selectedEvent.resource}
-                      status={securityDecision?.intent?.status || 'ALIGNED'}
-                      alignmentScore={securityDecision?.intent?.alignmentScore ?? 1.0}
-                      intentDrift={securityDecision?.intent?.status === 'DRIFT'}
-                      reason={securityDecision?.reasons?.find(
-                        (r) => r.toLowerCase().includes('intent') || r.toLowerCase().includes('drift')
-                      )}
+                      decision={securityDecision}
+                      originalIntent={selectedSession?.originalIntent || 'Session baseline objective'}
                     />
                   )}
 
-                  {/* Dynamic Trust & Risk Impact Card */}
-                  {activeTab === 'ALL' && (
-                    <div className="engine-card engine-card-clean">
-                      <div className="engine-card-header">
-                        <div className="engine-title-wrap">
-                          <Shield className="engine-status-icon text-indigo" size={20} />
-                          <div>
-                            <h4>3.4 & 3.5 Risk Arbitration & Dynamic Trust Impact</h4>
-                            <span className="engine-subtitle">Living Mathematical Agent Reputation</span>
-                          </div>
-                        </div>
-                        <span className="font-display font-bold text-sm text-slate-800">
-                          Resulting Trust: {securityDecision?.trustScore ?? 90} / 100
-                        </span>
+                  {/* Security Reasoning Box */}
+                  {activeTab === 'ALL' && securityDecision.reasons && (
+                    <div className="p-4 bg-[#FAF9F6] border border-[#EBEAE6] rounded-xl">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#2D2D2D] uppercase mb-2">
+                        <FileText size={14} className="text-[#FFC857]" />
+                        <span>Authoritative Decision Explanations</span>
                       </div>
-
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700">
-                        <strong>Security Reasons Evaluated:</strong>
-                        <ul className="list-disc pl-5 mt-1 space-y-1">
-                          {securityDecision?.reasons?.map((r, idx) => (
-                            <li key={idx}>{r}</li>
-                          )) || <li>Normal benign operation within baseline.</li>}
-                        </ul>
-                      </div>
+                      <ul className="list-disc pl-5 text-xs text-[#334155] space-y-1">
+                        {securityDecision.reasons.map((r, i) => (
+                          <li key={i}>{r}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
+
+                  {/* Raw JSON View */}
+                  {activeTab === 'JSON' && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-xs absolute top-2 right-2"
+                        onClick={handleCopyJson}
+                      >
+                        {copied ? <Check size={12} className="text-[#0E5E41]" /> : <Copy size={12} />}
+                        <span>{copied ? 'Copied' : 'Copy JSON'}</span>
+                      </button>
+                      <pre className="evidence-pre">
+                        {JSON.stringify(securityDecision, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="empty-state-card">
+                  <p>No decision data recorded for this event.</p>
                 </div>
               )}
             </div>
           ) : (
             <div className="empty-state-card">
-              <Search size={36} />
-              <p>Select an event from the left panel to inspect.</p>
+              <p>Select an event from the left list to begin forensic investigation.</p>
             </div>
           )}
         </div>

@@ -8,7 +8,6 @@ import {
   Eye,
   AlertTriangle,
   Send,
-  Sparkles,
 } from 'lucide-react';
 import { eventsApi, agentsApi, sessionsApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
@@ -126,15 +125,15 @@ const Events = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-              EVIDENCE STREAM
+            <span className="text-xs font-mono font-bold text-[#48267E] bg-[#F4EFFF] px-2.5 py-0.5 rounded-full border border-[#DFD0F7]">
+              ⚡ EVIDENCE STREAM
             </span>
-            <span className="text-xs text-muted">// Real-time Ingestion & Decision Telemetry</span>
+            <span className="text-xs text-[#8F8F8F] font-mono">// Real-time Ingestion & Decision Telemetry</span>
           </div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-2xl font-bold text-[#2D2D2D]">
             Real-Time Telemetry & Evidence Stream
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#6B6B6B] mt-1">
             Every incoming action includes directive provenance, tool parameters, target resource, and authoritative security verdicts.
           </p>
         </div>
@@ -163,7 +162,7 @@ const Events = () => {
       {/* Filter & Search Bar */}
       <div className="chains-filter-bar">
         <div className="filter-search-box">
-          <Search size={16} className="text-muted" />
+          <Search size={16} className="text-[#8F8F8F]" />
           <input
             type="text"
             placeholder="Search by event ID, action, resource, tool..."
@@ -173,7 +172,7 @@ const Events = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter size={15} className="text-muted" />
+          <Filter size={15} className="text-[#8F8F8F]" />
           <select
             className="filter-select"
             value={sensitivityFilter}
@@ -199,7 +198,7 @@ const Events = () => {
       <div className="editorial-card">
         <div className="card-editorial-head">
           <h3>
-            <Zap size={18} className="text-indigo" />
+            <Zap size={18} className="text-[#FFC857]" />
             <span>Ingested Agent Events ({filteredEvents.length})</span>
           </h3>
         </div>
@@ -235,18 +234,18 @@ const Events = () => {
 
                   return (
                     <tr key={evt.eventId}>
-                      <td className="mono-val font-semibold text-indigo">{evt.eventId}</td>
-                      <td className="text-xs text-slate-500">
+                      <td className="mono-val font-semibold text-[#48267E]">{evt.eventId}</td>
+                      <td className="text-xs text-[#8F8F8F]">
                         {new Date(evt.timestamp).toLocaleTimeString()}
                       </td>
                       <td>
                         <div className="flex flex-col">
-                          <span className="font-semibold text-slate-800">{evt.action}</span>
-                          <span className="text-xs text-slate-400 mono-val">{evt.tool}</span>
+                          <span className="font-bold text-[#2D2D2D]">{evt.action}</span>
+                          <span className="text-xs text-[#8F8F8F] mono-val">{evt.tool}</span>
                         </div>
                       </td>
                       <td>
-                        <code className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-700 font-mono">
+                        <code className="text-xs bg-[#FAF9F6] border border-[#EBEAE6] px-2 py-0.5 rounded text-[#07477D] font-mono">
                           {evt.resource}
                         </code>
                       </td>
@@ -255,10 +254,10 @@ const Events = () => {
                       </td>
                       <td>
                         <div className="text-xs">
-                          <span className="font-semibold text-slate-700 block">
+                          <span className="font-bold text-[#2D2D2D] block">
                             {evt.provenance?.trustLevel || 'TRUSTED'}
                           </span>
-                          <span className="text-slate-400 font-mono text-[11px]">
+                          <span className="text-[#8F8F8F] font-mono text-[11px]">
                             {evt.provenance?.sourceType || 'USER'}
                           </span>
                         </div>
@@ -304,7 +303,7 @@ const Events = () => {
               <div className="modal-body flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                       Session
                     </label>
                     <select
@@ -324,7 +323,7 @@ const Events = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                       Agent ID
                     </label>
                     <input
@@ -341,7 +340,7 @@ const Events = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                       Action
                     </label>
                     <input
@@ -356,7 +355,7 @@ const Events = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                       Tool
                     </label>
                     <input
@@ -372,7 +371,7 @@ const Events = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                     Target Resource
                   </label>
                   <input
@@ -388,7 +387,7 @@ const Events = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                       Data Sensitivity
                     </label>
                     <select
@@ -406,7 +405,7 @@ const Events = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                       Provenance Trust Level
                     </label>
                     <select

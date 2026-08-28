@@ -66,15 +66,15 @@ const AttackChains = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold text-coral bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-              TEMPORAL CORRELATION
+            <span className="text-xs font-mono font-bold text-[#801C0E] bg-[#FFEBE8] px-2.5 py-0.5 rounded-full border border-[#FFC7BF]">
+              ⛓️ TEMPORAL CORRELATION
             </span>
-            <span className="text-xs text-muted">// Stateful Multi-Stage Trajectories</span>
+            <span className="text-xs text-[#8F8F8F] font-mono">// Stateful Multi-Stage Trajectories</span>
           </div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-2xl font-bold text-[#2D2D2D]">
             Stateful Attack Chain Intelligence
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#6B6B6B] mt-1">
             Correlates discrete events into cohesive compound attack narratives across Untrusted Input &rarr; Prompt Influence &rarr; Intent Drift &rarr; Delegation &rarr; Exfiltration.
           </p>
         </div>
@@ -95,18 +95,18 @@ const AttackChains = () => {
         <div className="chain-metric-card">
           <div className="metric-header">
             <span className="metric-title">Active Attack Chains</span>
-            <ShieldAlert className="text-danger" size={20} />
+            <ShieldAlert className="text-[#EF4444]" size={20} />
           </div>
-          <div className="metric-val text-danger">{chains.length}</div>
+          <div className="metric-val text-[#EF4444]">{chains.length}</div>
           <div className="metric-sub">Multi-stage trajectories correlated</div>
         </div>
 
         <div className="chain-metric-card">
           <div className="metric-header">
             <span className="metric-title">Critical Severity</span>
-            <Layers className="text-coral" size={20} />
+            <Layers className="text-[#FF8B7B]" size={20} />
           </div>
-          <div className="metric-val text-coral">
+          <div className="metric-val text-[#FF8B7B]">
             {chains.filter((c) => c.severity === 'CRITICAL').length}
           </div>
           <div className="metric-sub">Requiring immediate containment</div>
@@ -115,9 +115,9 @@ const AttackChains = () => {
         <div className="chain-metric-card">
           <div className="metric-header">
             <span className="metric-title">Mean Confidence</span>
-            <Sparkles className="text-indigo" size={20} />
+            <Sparkles className="text-[#FFC857]" size={20} />
           </div>
-          <div className="metric-val text-indigo">98%</div>
+          <div className="metric-val text-[#2D2D2D]">98%</div>
           <div className="metric-sub">Deterministic evidence bounds</div>
         </div>
       </div>
@@ -125,7 +125,7 @@ const AttackChains = () => {
       {/* Filter & Search Bar */}
       <div className="chains-filter-bar">
         <div className="filter-search-box">
-          <Search size={16} className="text-muted" />
+          <Search size={16} className="text-[#8F8F8F]" />
           <input
             type="text"
             placeholder="Search by chain ID, summary keyword..."
@@ -135,7 +135,7 @@ const AttackChains = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter size={15} className="text-muted" />
+          <Filter size={15} className="text-[#8F8F8F]" />
           <select
             className="filter-select"
             value={severityFilter}
@@ -205,9 +205,9 @@ const AttackChains = () => {
 
               <div className="chain-card-footer">
                 <div className="chain-stats-meta">
-                  <span>Session: <strong className="mono-val text-indigo">{chain.sessionId || 'Active'}</strong></span>
-                  <span>Agent: <strong className="mono-val text-indigo">{chain.agentId || 'agent_001'}</strong></span>
-                  <span>Confidence: <strong className="text-emerald-700 font-bold">{Math.round((chain.confidence || 0.98) * 100)}%</strong></span>
+                  <span>Session: <strong className="mono-val text-[#48267E]">{chain.sessionId || 'Active'}</strong></span>
+                  <span>Agent: <strong className="mono-val text-[#48267E]">{chain.agentId || 'agent_001'}</strong></span>
+                  <span>Confidence: <strong className="text-[#0E5E41] font-bold">{Math.round((chain.confidence || 0.98) * 100)}%</strong></span>
                 </div>
                 <div>
                   <span>Detected: {new Date(chain.detectedAt || Date.now()).toLocaleTimeString()}</span>

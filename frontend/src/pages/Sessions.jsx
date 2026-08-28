@@ -5,10 +5,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Target,
-  Compass,
-  ArrowRight,
   Sparkles,
-  Zap,
 } from 'lucide-react';
 import { sessionsApi, agentsApi } from '../api/client';
 
@@ -84,15 +81,15 @@ const Sessions = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-              INTENT REGISTRY
+            <span className="text-xs font-mono font-bold text-[#6A4D00] bg-[#FFF5DD] px-2.5 py-0.5 rounded-full border border-[#FFE29E]">
+              🎯 INTENT REGISTRY
             </span>
-            <span className="text-xs text-muted">// Semantic Baseline Arbitration</span>
+            <span className="text-xs text-[#8F8F8F] font-mono">// Semantic Baseline Arbitration</span>
           </div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-2xl font-bold text-[#2D2D2D]">
             Session & Intent Integrity
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#6B6B6B] mt-1">
             Every session anchors an Authoritative Intent Baseline. The 3.3 Intent Integrity Engine measures ongoing agent drift against this baseline.
           </p>
         </div>
@@ -119,43 +116,43 @@ const Sessions = () => {
       </div>
 
       {/* Visual Intent Drift Teaching Banner */}
-      <div className="p-5 bg-surface border-2 border-indigo-500 rounded-2xl shadow-sm">
+      <div className="editorial-card p-6 bg-gradient-to-r from-white to-[#FFFDF8]">
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={16} className="text-indigo-600" />
-          <h3 className="font-display text-sm font-bold text-slate-900 uppercase tracking-wider">
+          <Sparkles size={16} className="text-[#FFC857]" />
+          <h3 className="font-display text-sm font-bold text-[#2D2D2D] uppercase tracking-wider">
             How TrustGuard Detects Intent Drift
           </h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-3 bg-canvas-bg border border-border rounded-xl">
-            <span className="text-[11px] font-bold text-indigo-700 uppercase block mb-1">
+          <div className="p-4 bg-[#FAF9F6] border border-[#EBEAE6] rounded-xl">
+            <span className="text-[11px] font-bold text-[#0E5E41] uppercase block mb-1">
               01 // AUTHORITATIVE INTENT
             </span>
-            <p className="text-xs text-slate-700 italic">
+            <p className="text-xs text-[#2D2D2D] italic">
               "Analyze NovaCorp quarterly financial telemetry"
             </p>
           </div>
 
-          <div className="p-3 bg-canvas-bg border border-border rounded-xl">
-            <span className="text-[11px] font-bold text-cyan-700 uppercase block mb-1">
+          <div className="p-4 bg-[#FAF9F6] border border-[#EBEAE6] rounded-xl">
+            <span className="text-[11px] font-bold text-[#07477D] uppercase block mb-1">
               02 // OBSERVED ACTION
             </span>
-            <p className="text-xs text-slate-700 font-mono">
+            <p className="text-xs text-[#2D2D2D] font-mono">
               agent.query_db("SELECT * FROM credentials")
             </p>
           </div>
 
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between">
+          <div className="p-4 bg-[#FEECEB] border border-[#FFC7BF] rounded-xl flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-bold text-rose-700 uppercase block mb-0.5">
+              <span className="text-[11px] font-bold text-[#991B1B] uppercase block mb-0.5">
                 03 // ALIGNMENT VERDICT
               </span>
-              <span className="font-display font-bold text-sm text-rose-900">
+              <span className="font-display font-bold text-sm text-[#801C0E]">
                 0.28 DRIFT DETECTED ⚠
               </span>
             </div>
-            <span className="font-mono text-xs font-extrabold text-rose-700 bg-white px-2 py-1 rounded border border-rose-300">
+            <span className="font-mono text-xs font-extrabold text-[#991B1B] bg-white px-2 py-1 rounded border border-[#FF8B7B]">
               BLOCK
             </span>
           </div>
@@ -173,7 +170,7 @@ const Sessions = () => {
       <div className="editorial-card">
         <div className="card-editorial-head">
           <h3>
-            <Radio size={18} className="text-indigo" />
+            <Radio size={18} className="text-[#FFC857]" />
             <span>Active & Recorded Sessions ({sessions.length})</span>
           </h3>
         </div>
@@ -204,24 +201,24 @@ const Sessions = () => {
               <tbody>
                 {sessions.map((sess) => (
                   <tr key={sess.sessionId}>
-                    <td className="mono-val font-semibold text-indigo">{sess.sessionId}</td>
+                    <td className="mono-val font-semibold text-[#48267E]">{sess.sessionId}</td>
                     <td>
-                      <span className="mono-val text-xs text-slate-700 font-semibold">
+                      <span className="mono-val text-xs text-[#2D2D2D] font-semibold">
                         {sess.agentId || 'agent_001'}
                       </span>
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
-                        <Target size={14} className="text-indigo flex-shrink-0" />
-                        <span className="text-slate-800 text-xs italic font-medium">
+                        <Target size={14} className="text-[#0E5E41] flex-shrink-0" />
+                        <span className="text-[#2D2D2D] text-xs italic font-medium">
                           "{sess.originalIntent}"
                         </span>
                       </div>
                     </td>
                     <td>
-                      <span className="font-extrabold text-slate-900 text-sm">
+                      <span className="font-extrabold text-[#2D2D2D] text-sm">
                         {sess.currentTrustScore ?? 100}{' '}
-                        <span className="text-xs text-slate-400 font-normal">/ 100</span>
+                        <span className="text-xs text-[#8F8F8F] font-normal">/ 100</span>
                       </span>
                     </td>
                     <td>
@@ -229,7 +226,7 @@ const Sessions = () => {
                         ● {sess.status}
                       </span>
                     </td>
-                    <td className="text-xs text-slate-500">
+                    <td className="text-xs text-[#8F8F8F]">
                       {new Date(sess.createdAt || Date.now()).toLocaleTimeString()}
                     </td>
                   </tr>
@@ -258,7 +255,7 @@ const Sessions = () => {
             <form onSubmit={handleCreateSession}>
               <div className="modal-body flex flex-col gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                     Select Agent
                   </label>
                   <select
@@ -275,7 +272,7 @@ const Sessions = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
                     Original Intent (Authoritative Baseline)
                   </label>
                   <textarea
@@ -286,7 +283,7 @@ const Sessions = () => {
                     onChange={(e) => setNewIntent(e.target.value)}
                     required
                   />
-                  <span className="text-xs text-slate-500 mt-1 block">
+                  <span className="text-xs text-[#8F8F8F] mt-1 block">
                     All future actions in this session will be arbitrated for semantic drift against this text.
                   </span>
                 </div>

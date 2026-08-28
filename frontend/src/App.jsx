@@ -7,6 +7,8 @@ import Overview from './pages/Overview';
 import Agents from './pages/Agents';
 import Sessions from './pages/Sessions';
 import Events from './pages/Events';
+import Decisions from './pages/Decisions';
+import Investigations from './pages/Investigations';
 import AttackChains from './pages/AttackChains';
 import Simulations from './pages/Simulations';
 import './index.css';
@@ -23,6 +25,8 @@ function App() {
             <Route path="agents" element={<Agents />} />
             <Route path="sessions" element={<Sessions />} />
             <Route path="events" element={<Events />} />
+            <Route path="decisions" element={<Decisions />} />
+            <Route path="investigations" element={<Investigations />} />
             <Route path="activity" element={<Navigate to="/events" replace />} />
             <Route path="attack-chains" element={<AttackChains />} />
             <Route path="simulations" element={<Simulations />} />

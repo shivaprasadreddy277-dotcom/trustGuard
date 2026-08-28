@@ -8,17 +8,30 @@ import {
   AlertTriangle,
   ArrowUpRight,
   RefreshCw,
-  PlusCircle,
+  ShieldAlert,
+  Flame,
+  Key,
+  Compass,
+  GitBranch,
+  Eye,
 } from 'lucide-react';
-import { agentsApi, eventsApi } from '../api/client';
+import { agentsApi, eventsApi, securityApi } from '../api/client';
+import DecisionBadge from '../components/security/DecisionBadge';
+import RiskBadge from '../components/security/RiskBadge';
+import TrustScoreMeter from '../components/security/TrustScoreMeter';
+import InvestigationModal from '../components/security/InvestigationModal';
 
 const Overview = () => {
   const navigate = useNavigate();
 
   const [agents, setAgents] = useState([]);
   const [events, setEvents] = useState([]);
+  const [decisionsMap, setDecisionsMap] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Investigation Modal
+  const [investigatingEvent, setInvestigatingEvent] = useState(null);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -26,17 +39,30 @@ const Overview = () => {
     try {
       const [agentsRes, eventsRes] = await Promise.allSettled([
         agentsApi.listAgents(),
-        eventsApi.listEvents({ limit: 10 }),
+        eventsApi.listEvents({ limit: 20 }),
       ]);
 
-      if (agentsRes.status === 'fulfilled') {
-        setAgents(agentsRes.value.agents || []);
-      }
-      if (eventsRes.status === 'fulfilled') {
-        setEvents(eventsRes.value.events || []);
-      }
+      const rawAgents = agentsRes.status === 'fulfilled' ? agentsRes.value.agents || [] : [];
+      const rawEvents = eventsRes.status === 'fulfilled' ? eventsRes.value.events || [] : [];
+
+      setAgents(rawAgents);
+      setEvents(rawEvents);
+
+      // Fetch security decisions for recent events
+      const decMap = {};
+      await Promise.all(
+        rawEvents.slice(0, 10).map(async (ev) => {
+          try {
+            const dec = await securityApi.getDecision(ev.eventId);
+            decMap[ev.eventId] = dec;
+          } catch {
+            // Optional legacy fallback
+          }
+        })
+      );
+      setDecisionsMap(decMap);
     } catch (err) {
-      setError(err.message || 'Failed to load telemetry summary.');
+      setError(err.message || 'Failed to load security overview.');
     } finally {
       setIsLoading(false);
     }
@@ -53,21 +79,26 @@ const Overview = () => {
       ? Math.round(agents.reduce((acc, a) => acc + (a.currentTrustScore || 0), 0) / agents.length)
       : 100;
 
+  const blockCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'BLOCK').length;
+  const reviewCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'REVIEW').length;
+  const allowCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'ALLOW').length;
+
   return (
     <div className="page-container">
+      {/* Page Header */}
       <div className="page-header flex-between">
         <div>
-          <h2>Security Operations Overview</h2>
-          <p className="subtitle">Real-time AI agent telemetry & trust reputation monitoring</p>
+          <h2>Security Operations Center</h2>
+          <p className="subtitle">Real-time AI continuous security arbitration, trust reputation, and threat prevention</p>
         </div>
         <div className="header-btn-group">
           <button className="secondary-btn" onClick={fetchDashboardData} disabled={isLoading}>
             <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
-            <span>Refresh Telemetry</span>
+            <span>Refresh SOC</span>
           </button>
-          <button className="primary-btn" onClick={() => navigate('/sessions')}>
-            <PlusCircle size={16} />
-            <span>New Agent Session</span>
+          <button className="primary-btn" onClick={() => navigate('/events')}>
+            <Zap size={16} />
+            <span>Test Telemetry Stream</span>
           </button>
         </div>
       </div>
@@ -79,7 +110,7 @@ const Overview = () => {
         </div>
       )}
 
-      {/* Metrics Row */}
+      {/* Primary SOC Metrics Row */}
       <div className="metrics-grid">
         <div className="metric-card">
           <div className="metric-header">
@@ -109,49 +140,146 @@ const Overview = () => {
           </div>
           <div className="metric-subtext">
             <span className={avgTrustScore >= 80 ? 'text-success' : 'text-warning'}>
-              {avgTrustScore >= 80 ? 'Authoritative baseline intact' : 'Degraded trust detected'}
+              {avgTrustScore >= 80 ? 'Authoritative reputation intact' : 'Degraded trust detected'}
             </span>
           </div>
         </div>
 
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">Telemetry Events Ingested</span>
-            <div className="metric-icon-wrap purple">
-              <Zap size={20} />
+            <span className="metric-title">Security Decisions Arbitrated</span>
+            <div className="metric-icon-wrap red">
+              <ShieldAlert size={20} />
             </div>
           </div>
           <div className="metric-value">{isLoading ? '...' : events.length}</div>
-          <div className="metric-subtext text-muted">
-            Continuous event stream active
+          <div className="metric-subtext">
+            <span className="text-danger font-medium">{blockCount} Blocked</span>
+            <span className="text-warning font-medium ml-2">{reviewCount} Review</span>
+            <span className="text-success font-medium ml-2">{allowCount} Allowed</span>
           </div>
         </div>
 
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">Security Ingestion Pipeline</span>
+            <span className="metric-title">Security Intelligence Pipeline</span>
             <div className="metric-icon-wrap emerald">
               <CheckCircle2 size={20} />
             </div>
           </div>
           <div className="metric-value text-success text-2xl font-bold">ACTIVE</div>
           <div className="metric-subtext text-muted">
-            Cycle 2.4 Ingestion Engine connected
+            5 Engines Arbitrating (Cycle 3)
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Agents Summary & Recent Events */}
+      {/* Continuous Security Engines Status Bar */}
+      <div className="engines-status-banner">
+        <div className="engines-banner-header">
+          <Shield size={16} className="text-cyan" />
+          <span className="font-semibold">TrustGuard Multi-Engine Security Architecture (Cycle 3)</span>
+        </div>
+        <div className="engines-chips-grid">
+          <div className="engine-status-tag">
+            <Key size={13} className="text-blue" />
+            <span>3.1 Policy Engine: <strong>Authoritative</strong></span>
+          </div>
+          <div className="engine-status-tag">
+            <GitBranch size={13} className="text-cyan" />
+            <span>3.2 Provenance Engine: <strong>Active</strong></span>
+          </div>
+          <div className="engine-status-tag">
+            <Compass size={13} className="text-indigo" />
+            <span>3.3 Intent Integrity: <strong>Active</strong></span>
+          </div>
+          <div className="engine-status-tag">
+            <Flame size={13} className="text-red" />
+            <span>3.4 Risk & Decision: <strong>Active</strong></span>
+          </div>
+          <div className="engine-status-tag">
+            <Shield size={13} className="text-emerald" />
+            <span>3.5 Dynamic Trust: <strong>Active</strong></span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid: Recent Arbitrated Decisions & Registered Agents */}
       <div className="overview-split-grid">
-        {/* Left: Registered Agents */}
+        {/* Left: Recent Security Decisions */}
+        <div className="card">
+          <div className="card-header flex-between">
+            <div className="card-title-wrap">
+              <ShieldAlert size={18} className="text-accent" />
+              <h3>Recent Security Decisions</h3>
+            </div>
+            <button className="text-btn" onClick={() => navigate('/decisions')}>
+              Decision Center <ArrowUpRight size={14} />
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="card-loader">
+              <div className="spinner-small" />
+              <span>Loading security decisions...</span>
+            </div>
+          ) : events.length === 0 ? (
+            <div className="empty-card-state">
+              <Zap size={32} className="text-muted mb-2" />
+              <p>No security telemetry events ingested yet.</p>
+              <button
+                className="secondary-btn btn-sm mt-3"
+                onClick={() => navigate('/events')}
+              >
+                Ingest Test Event
+              </button>
+            </div>
+          ) : (
+            <div className="event-mini-list">
+              {events.slice(0, 6).map((evt) => {
+                const dec = decisionsMap[evt.eventId];
+                const verdict = dec?.decision || (evt.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
+                const risk = dec?.riskLevel || (evt.dataSensitivity === 'CRITICAL' ? 'CRITICAL' : 'LOW');
+
+                return (
+                  <div key={evt.eventId} className="event-mini-item">
+                    <div className="event-mini-top">
+                      <DecisionBadge decision={verdict} />
+                      <RiskBadge riskLevel={risk} />
+                      <span className="code-tag">{evt.eventId}</span>
+                      <span className="event-time">
+                        {new Date(evt.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="event-action-desc">
+                      <strong>{evt.tool}</strong>: <code>{evt.action}</code>
+                    </div>
+                    <div className="event-resource-row flex-between">
+                      <span>Target: <code>{evt.resource}</code></span>
+                      <button
+                        className="btn-text-action"
+                        onClick={() => setInvestigatingEvent(evt)}
+                      >
+                        <Eye size={12} />
+                        <span>Inspect</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Monitored Agents & Dynamic Trust */}
         <div className="card">
           <div className="card-header flex-between">
             <div className="card-title-wrap">
               <Users size={18} className="text-accent" />
-              <h3>Registered Agents</h3>
+              <h3>Monitored AI Agents</h3>
             </div>
             <button className="text-btn" onClick={() => navigate('/agents')}>
-              View All <ArrowUpRight size={14} />
+              Agent Registry <ArrowUpRight size={14} />
             </button>
           </div>
 
@@ -180,75 +308,7 @@ const Overview = () => {
                     <span className={`status-pill ${agent.status.toLowerCase()}`}>
                       {agent.status}
                     </span>
-                    <div className="trust-meter-small">
-                      <div
-                        className="trust-fill"
-                        style={{
-                          width: `${agent.currentTrustScore}%`,
-                          backgroundColor:
-                            agent.currentTrustScore >= 80
-                              ? 'var(--status-allow)'
-                              : agent.currentTrustScore >= 50
-                              ? 'var(--status-review)'
-                              : 'var(--status-block)',
-                        }}
-                      />
-                    </div>
-                    <span className="trust-score-label">{agent.currentTrustScore} / 100</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Live Event Telemetry Feed */}
-        <div className="card">
-          <div className="card-header flex-between">
-            <div className="card-title-wrap">
-              <Zap size={18} className="text-accent" />
-              <h3>Recent Ingested Events</h3>
-            </div>
-            <button className="text-btn" onClick={() => navigate('/events')}>
-              Full Telemetry <ArrowUpRight size={14} />
-            </button>
-          </div>
-
-          {isLoading ? (
-            <div className="card-loader">
-              <div className="spinner-small" />
-              <span>Loading event stream...</span>
-            </div>
-          ) : events.length === 0 ? (
-            <div className="empty-card-state">
-              <Zap size={32} className="text-muted mb-2" />
-              <p>No telemetry events ingested yet.</p>
-              <button
-                className="secondary-btn btn-sm mt-3"
-                onClick={() => navigate('/events')}
-              >
-                Ingest Test Event
-              </button>
-            </div>
-          ) : (
-            <div className="event-mini-list">
-              {events.slice(0, 5).map((evt) => (
-                <div key={evt.eventId} className="event-mini-item">
-                  <div className="event-mini-top">
-                    <span className="code-tag">{evt.eventId}</span>
-                    <span className={`sensitivity-badge ${evt.dataSensitivity.toLowerCase()}`}>
-                      {evt.dataSensitivity}
-                    </span>
-                    <span className="event-time">
-                      {new Date(evt.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="event-action-desc">
-                    <strong>{evt.tool}</strong>: <code>{evt.action}</code>
-                  </div>
-                  <div className="event-resource-row">
-                    <span>Target: <code>{evt.resource}</code></span>
-                    <span className="text-muted">Provenance: {evt.provenance?.sourceType}</span>
+                    <TrustScoreMeter score={agent.currentTrustScore} size="compact" />
                   </div>
                 </div>
               ))}
@@ -256,6 +316,17 @@ const Overview = () => {
           )}
         </div>
       </div>
+
+      {/* Forensic Investigation Modal */}
+      {investigatingEvent && (
+        <InvestigationModal
+          event={investigatingEvent}
+          agent={agents.find((a) => a.agentId === investigatingEvent.agentId)}
+          session={{ originalIntent: agents.find((a) => a.agentId === investigatingEvent.agentId)?.declaredObjective }}
+          isOpen={Boolean(investigatingEvent)}
+          onClose={() => setInvestigatingEvent(null)}
+        />
+      )}
     </div>
   );
 };

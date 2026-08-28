@@ -1,6 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Shield, Users, Radio, Zap, Link, PlaySquare } from 'lucide-react';
+import {
+  Shield,
+  Users,
+  Radio,
+  Zap,
+  ShieldAlert,
+  Search,
+  Link,
+  PlaySquare,
+} from 'lucide-react';
 
 const Sidebar = () => {
   const navItems = [
@@ -8,6 +17,8 @@ const Sidebar = () => {
     { path: '/agents', label: 'Agents', icon: Users },
     { path: '/sessions', label: 'Sessions', icon: Radio },
     { path: '/events', label: 'Events & Telemetry', icon: Zap },
+    { path: '/decisions', label: 'Security Decisions', icon: ShieldAlert },
+    { path: '/investigations', label: 'Investigations', icon: Search },
     { path: '/attack-chains', label: 'Attack Chains', icon: Link },
     { path: '/simulations', label: 'Simulations', icon: PlaySquare },
   ];

@@ -110,3 +110,9 @@ export const eventsApi = {
     return request(`/agent/events${qs}`, { method: 'GET' });
   },
 };
+
+// ── Security Intelligence APIs (Cycle 3) ───────────────────────────────────
+export const securityApi = {
+  getDecision: (eventId) =>
+    request(`/security/decisions/${encodeURIComponent(eventId)}`, { method: 'GET' }),
+};

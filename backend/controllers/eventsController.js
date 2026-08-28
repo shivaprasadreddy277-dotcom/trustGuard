@@ -394,6 +394,11 @@ async function ingestEvent(req, res, next) {
               'UNRESOLVED',
             ]
           );
+        } else {
+          await pool.query(
+            'UPDATE alerts SET severity = $1, description = $2 WHERE attack_chain_id = $3',
+            [chainResult.severity, chainResult.summary, chainDbUuid]
+          );
         }
       }
 

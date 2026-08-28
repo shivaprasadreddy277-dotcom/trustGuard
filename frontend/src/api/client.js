@@ -145,3 +145,18 @@ export const alertsApi = {
     return request(`/security/alerts${qs}`, { method: 'GET' });
   },
 };
+
+// ── Security Simulation APIs (Cycle 5) ───────────────────────────────────────
+export const simulationApi = {
+  getScenarios: () => request('/simulation/scenarios', { method: 'GET' }),
+  runSimulation: (scenarioId) =>
+    request('/simulation/run', {
+      method: 'POST',
+      body: JSON.stringify({ scenarioId }),
+    }),
+  getSimulation: (simulationId) =>
+    request(`/simulation/runs/${encodeURIComponent(simulationId)}`, { method: 'GET' }),
+  listRuns: (limit = 20) =>
+    request(`/simulation/runs?limit=${limit}`, { method: 'GET' }),
+};
+

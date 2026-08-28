@@ -14,6 +14,7 @@ import Alerts from './pages/Alerts';
 import Simulations from './pages/Simulations';
 import './index.css';
 import './attackChains.css';
+import './simulations.css';
 
 function App() {
   return (

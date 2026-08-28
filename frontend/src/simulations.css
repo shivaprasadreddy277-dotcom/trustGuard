@@ -1,0 +1,424 @@
+/* ==========================================================================
+   TrustGuard — Simulation Lab Styles (Cycle 5)
+   ========================================================================== */
+
+.scenarios-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.scenario-select-card {
+  background: var(--card-bg, #111928);
+  border: 1px solid var(--border-color, #1f2a37);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.scenario-select-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.scenario-select-card.selected {
+  border-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.05);
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.2);
+}
+
+.scenario-select-card.compound-highlight {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.scenario-select-card.compound-highlight.selected {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.25);
+}
+
+.scenario-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.scenario-icon-pill {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #06b6d4;
+}
+
+.jury-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.scenario-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 6px;
+}
+
+.scenario-desc {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  flex-grow: 1;
+}
+
+.scenario-expected-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.75rem;
+}
+
+.exp-label {
+  color: #9ca3af;
+}
+
+.scenario-steps-summary {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.steps-title {
+  font-weight: 600;
+  color: #9ca3af;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.steps-bullets {
+  padding-left: 14px;
+  margin: 0;
+}
+
+.steps-bullets li {
+  margin-bottom: 2px;
+}
+
+/* Action Banner */
+.simulation-action-banner {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.9));
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.action-banner-info h3 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+.action-banner-info p {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.action-banner-info code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #06b6d4;
+}
+
+.btn-critical-glow {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #ef4444;
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 12px 24px;
+}
+
+.btn-critical-glow:hover {
+  background: #b91c1c;
+  box-shadow: 0 0 28px rgba(220, 38, 38, 0.6);
+}
+
+/* Live Pipeline Card */
+.live-pipeline-card {
+  background: #0f172a;
+  border: 1px solid #06b6d4;
+  border-radius: 10px;
+  padding: 18px 24px;
+  margin-bottom: 24px;
+}
+
+.pipeline-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pipeline-header h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.pipeline-stages-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.pipe-node {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.pipe-node.active {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: #06b6d4;
+  color: #22d3ee;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+}
+
+.pipe-arr {
+  color: #475569;
+  flex-shrink: 0;
+}
+
+/* Final Verdict Card */
+.final-verdict-card {
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid #374151;
+}
+
+.final-verdict-card.verdict-critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(17, 24, 39, 0.9));
+  border-color: #ef4444;
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.15);
+}
+
+.final-verdict-card.verdict-standard {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(17, 24, 39, 0.9));
+  border-color: #10b981;
+}
+
+.verdict-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.verdict-badge-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.verdict-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.verdict-subtitle {
+  font-size: 0.88rem;
+  color: #d1d5db;
+  margin: 0;
+}
+
+.verdict-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+}
+
+.v-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v-metric-label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.v-metric-val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f9fafb;
+}
+
+/* Event Stream Step Cards */
+.stream-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stream-step-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  transition: border-color 0.2s;
+}
+
+.stream-step-card:hover {
+  border-color: #374151;
+}
+
+.step-badge-col {
+  display: flex;
+  align-items: flex-start;
+}
+
+.step-num {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.step-main-col {
+  flex-grow: 1;
+}
+
+.step-head-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.step-action-tag {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f3f4f6;
+}
+
+.step-res-tag {
+  font-size: 0.8rem;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.step-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.step-reasons-box {
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 3px solid #06b6d4;
+  padding: 6px 12px;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.78rem;
+  color: #d1d5db;
+  line-height: 1.4;
+}
+
+.reason-line {
+  margin-bottom: 2px;
+}
+
+/* Raw Evidence Box */
+.raw-evidence-box {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.evidence-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.evidence-head h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.evidence-pre {
+  background: #010409;
+  border: 1px solid #161b22;
+  border-radius: 6px;
+  padding: 14px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.76rem;
+  color: #7ee787;
+  overflow-x: auto;
+  max-height: 320px;
+}

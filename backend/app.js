@@ -14,6 +14,7 @@ const agentsRouter = require('./routes/agents');
 const sessionsRouter = require('./routes/sessions');
 const eventsRouter = require('./routes/events');
 const securityRouter = require('./routes/security');
+const simulationRouter = require('./routes/simulation');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -38,6 +39,8 @@ app.use('/api/sessions', sessionsRouter);
 app.use('/api/agent/events', eventsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/security', securityRouter);
+app.use('/api/simulation', simulationRouter);
+app.use('/api/simulations', simulationRouter);
 
 // ── 404 & Error Handlers ─────────────────────────────────────────────────────
 app.use(notFoundHandler);

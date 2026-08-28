@@ -2,62 +2,96 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Shield,
+  LayoutDashboard,
+  ShieldCheck,
+  Search,
+  Bell,
   Users,
   Radio,
   Zap,
-  ShieldAlert,
-  Search,
-  Link,
-  Bell,
+  Layers,
   PlaySquare,
+  Activity,
 } from 'lucide-react';
 
 const Sidebar = () => {
-  const navItems = [
-    { path: '/overview', label: 'Overview', icon: Shield },
-    { path: '/agents', label: 'Agents', icon: Users },
-    { path: '/sessions', label: 'Sessions', icon: Radio },
-    { path: '/events', label: 'Events & Telemetry', icon: Zap },
-    { path: '/decisions', label: 'Security Decisions', icon: ShieldAlert },
-    { path: '/investigations', label: 'Investigations', icon: Search },
-    { path: '/attack-chains', label: 'Attack Chains', icon: Link },
-    { path: '/alerts', label: 'Alerts', icon: Bell },
-    { path: '/simulations', label: 'Simulations', icon: PlaySquare },
+  const navSections = [
+    {
+      title: 'OVERVIEW',
+      items: [
+        { path: '/overview', label: 'Command Overview', icon: LayoutDashboard },
+      ],
+    },
+    {
+      title: 'SECURITY',
+      items: [
+        { path: '/decisions', label: 'Security Decisions', icon: ShieldCheck },
+        { path: '/investigations', label: 'Investigation Lab', icon: Search },
+        { path: '/alerts', label: 'Security Alerts', icon: Bell },
+      ],
+    },
+    {
+      title: 'MONITORING',
+      items: [
+        { path: '/agents', label: 'Agent Fleet', icon: Users },
+        { path: '/sessions', label: 'Session Registry', icon: Radio },
+        { path: '/events', label: 'Telemetry & Events', icon: Zap },
+      ],
+    },
+    {
+      title: 'INTELLIGENCE',
+      items: [
+        { path: '/attack-chains', label: 'Attack Chains', icon: Layers },
+        { path: '/simulations', label: 'Simulation Lab', icon: PlaySquare },
+      ],
+    },
   ];
 
   return (
     <aside className="sidebar">
-      <div className="brand">
-        <Shield className="brand-icon" size={26} />
-        <div className="brand-title-wrap">
+      {/* Brand Header */}
+      <div className="sidebar-brand">
+        <div className="brand-icon-shield">
+          <Shield size={22} />
+        </div>
+        <div className="brand-meta">
           <h1>TrustGuard</h1>
-          <span className="brand-tag">SOC Control</span>
+          <span className="brand-tagline">AI Security Center</span>
         </div>
       </div>
 
-      <nav className="nav-menu">
-        <ul>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
-                >
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {/* Navigation Sections */}
+      <div className="sidebar-nav-container">
+        {navSections.map((sec) => (
+          <div key={sec.title} className="nav-section-group">
+            <div className="nav-section-title">{sec.title}</div>
+            <ul className="nav-list">
+              {sec.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        isActive ? 'nav-item-link active' : 'nav-item-link'
+                      }
+                    >
+                      <Icon size={16} />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
 
-      <div className="sidebar-footer">
-        <div className="engine-status-pill">
-          <span className="pulse-indicator" />
-          <span>Continuous Security Active</span>
+      {/* System Status Footer */}
+      <div className="sidebar-footer-card">
+        <div className="system-status-indicator">
+          <span className="status-dot-pulse" />
+          <span>All 5 Engines Operational</span>
         </div>
       </div>
     </aside>

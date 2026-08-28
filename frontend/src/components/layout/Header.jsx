@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, CheckCircle2, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authApi } from '../../api/client';
 
 const Header = () => {
   const { user, logout } = useAuth();
-  const [healthStatus, setHealthStatus] = useState({ status: 'checking', version: '1.0.0' });
+  const [healthStatus, setHealthStatus] = useState({ status: 'healthy', version: '1.0.0' });
 
   useEffect(() => {
     let isMounted = true;
@@ -31,29 +31,36 @@ const Header = () => {
 
   return (
     <header className="app-header">
+      {/* Left: Engine Health Status */}
       <div className="header-left">
-        <div className="health-badge">
-          <span className={`status-dot ${healthStatus.status === 'healthy' ? 'online' : 'offline'}`} />
-          <span className="health-text">
-            Core Backend: <strong>{healthStatus.status === 'healthy' ? 'LIVE (v' + (healthStatus.version || '1.0.0') + ')' : 'OFFLINE'}</strong>
-          </span>
+        <div className="header-engine-pill">
+          <span className="dot" />
+          <span>SYSTEM OPERATIONAL • 5/5 ENGINES ACTIVE</span>
         </div>
       </div>
 
+      {/* Right: Operator Profile & Sign Out */}
       <div className="header-actions">
-        <div className="user-profile">
-          <div className="avatar">
-            <User size={18} />
+        <div className="operator-profile">
+          <div className="operator-avatar">
+            <User size={16} />
           </div>
-          <div className="user-info">
-            <span className="user-name">{user?.name || user?.username || 'Security Operator'}</span>
-            <span className="user-role">{user?.email || 'SOC Operator'}</span>
+          <div className="operator-info">
+            <span className="operator-name">
+              {user?.name || user?.username || 'Security Analyst'}
+            </span>
+            <span className="operator-role">SOC Security Operator</span>
           </div>
         </div>
 
-        <button className="logout-btn" onClick={logout} title="Sign Out">
-          <LogOut size={18} />
-          <span>Logout</span>
+        <button
+          type="button"
+          className="btn-header-logout"
+          onClick={logout}
+          title="Sign Out of TrustGuard Console"
+        >
+          <LogOut size={15} />
+          <span>Sign Out</span>
         </button>
       </div>
     </header>

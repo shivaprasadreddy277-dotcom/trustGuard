@@ -1,0 +1,387 @@
+/**
+ * TrustGuard — Agent Events Controller
+ *
+ * Implements the event ingestion & telemetry endpoints defined in docs/API_CONTRACT.md:
+ *   POST /api/agent/events — Ingest agent runtime event evidence
+ *   GET  /api/agent/events — Retrieve historic agent telemetry stream
+ *
+ * Security rules:
+ *  - Both endpoints require JWT authentication.
+ *  - Event session ownership is verified against the authenticated JWT user (req.user.userId).
+ *  - Referenced agents must exist in the database; unknown agents are rejected.
+ *  - Reported authorization and permissions are stored purely as EVIDENCE;
+ *    they are NOT treated as authoritative permissions or decisions.
+ *  - Registered agent permissions (agents.permissions) are NEVER modified by event data.
+ *  - attack_chain_id remains NULL at ingestion (engines evaluate in Cycle 3).
+ *  - No security_decisions records are created during ingestion.
+ *  - Public identifiers (event_id_str, session_id_str, agent_id_str) are used;
+ *    internal UUIDs are never exposed in API responses.
+ */
+'use strict';
+
+const { v4: uuidv4 } = require('uuid');
+const pool = require('../db/pool');
+const { sendError } = require('../middleware/errorHandler');
+
+const VALID_DATA_SENSITIVITY = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+const VALID_AUTH_STATUS = ['ALLOWED', 'DENIED', 'UNKNOWN'];
+const VALID_PROVENANCE_SOURCE_TYPE = [
+  'USER',
+  'SYSTEM_POLICY',
+  'APPROVED_KNOWLEDGE',
+  'INTERNAL_DOCUMENT',
+  'EXTERNAL_DOCUMENT',
+  'ANOTHER_AGENT',
+];
+const VALID_PROVENANCE_TRUST_LEVEL = ['TRUSTED', 'MEDIUM', 'UNTRUSTED'];
+
+/**
+ * POST /api/agent/events
+ * Ingest telemetry about an agent's runtime step/activity.
+ */
+async function ingestEvent(req, res, next) {
+  try {
+    const {
+      eventId,
+      sessionId,
+      agentId,
+      parentAgentId,
+      timestamp,
+      action,
+      tool,
+      resource,
+      dataSensitivity,
+      authorization,
+      provenance,
+      metadata,
+      eventMetadata,
+    } = req.body;
+
+    // ── 1. Basic Field Presence & Type Validation ──────────────────────────
+    if (!eventId || typeof eventId !== 'string' || eventId.trim() === '') {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'eventId' is required.");
+    }
+
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.trim() === '') {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'sessionId' is required.");
+    }
+
+    if (!agentId || typeof agentId !== 'string' || agentId.trim() === '') {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'agentId' is required.");
+    }
+
+    if (!action || typeof action !== 'string' || action.trim() === '') {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'action' is required.");
+    }
+
+    if (!tool || typeof tool !== 'string' || tool.trim() === '') {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'tool' is required.");
+    }
+
+    if (!resource || typeof resource !== 'string' || resource.trim() === '') {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'resource' is required.");
+    }
+
+    if (!dataSensitivity || !VALID_DATA_SENSITIVITY.includes(dataSensitivity)) {
+      return sendError(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        `Field 'dataSensitivity' must be one of: ${VALID_DATA_SENSITIVITY.join(', ')}.`
+      );
+    }
+
+    // ── 2. Authorization Object Validation ─────────────────────────────────
+    if (!authorization || typeof authorization !== 'object' || Array.isArray(authorization)) {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'authorization' object is required.");
+    }
+
+    if (!authorization.status || !VALID_AUTH_STATUS.includes(authorization.status)) {
+      return sendError(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        `Field 'authorization.status' must be one of: ${VALID_AUTH_STATUS.join(', ')}.`
+      );
+    }
+
+    const requiredPermission =
+      authorization.requiredPermission && typeof authorization.requiredPermission === 'string'
+        ? authorization.requiredPermission.trim()
+        : null;
+
+    let grantedPermissions = [];
+    if (authorization.grantedPermissions) {
+      if (!Array.isArray(authorization.grantedPermissions)) {
+        return sendError(
+          res,
+          400,
+          'VALIDATION_ERROR',
+          "Field 'authorization.grantedPermissions' must be an array of strings."
+        );
+      }
+      grantedPermissions = authorization.grantedPermissions.map(p => String(p).trim());
+    }
+
+    // ── 3. Provenance Object Validation ────────────────────────────────────
+    if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'provenance' object is required.");
+    }
+
+    if (!provenance.sourceType || !VALID_PROVENANCE_SOURCE_TYPE.includes(provenance.sourceType)) {
+      return sendError(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        `Field 'provenance.sourceType' must be one of: ${VALID_PROVENANCE_SOURCE_TYPE.join(', ')}.`
+      );
+    }
+
+    if (!provenance.sourceId || typeof provenance.sourceId !== 'string' || provenance.sourceId.trim() === '') {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'provenance.sourceId' is required.");
+    }
+
+    if (!provenance.trustLevel || !VALID_PROVENANCE_TRUST_LEVEL.includes(provenance.trustLevel)) {
+      return sendError(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        `Field 'provenance.trustLevel' must be one of: ${VALID_PROVENANCE_TRUST_LEVEL.join(', ')}.`
+      );
+    }
+
+    // ── 4. Metadata Validation ─────────────────────────────────────────────
+    const rawMeta = metadata || eventMetadata || {};
+    if (typeof rawMeta !== 'object' || Array.isArray(rawMeta) || rawMeta === null) {
+      return sendError(res, 400, 'VALIDATION_ERROR', "Field 'metadata' must be a valid JSON object.");
+    }
+
+    // ── 5. Timestamp Handling ──────────────────────────────────────────────
+    let eventTimestamp = new Date();
+    if (timestamp) {
+      const parsedDate = new Date(timestamp);
+      if (isNaN(parsedDate.getTime())) {
+        return sendError(res, 400, 'VALIDATION_ERROR', "Field 'timestamp' must be a valid ISO date string.");
+      }
+      eventTimestamp = parsedDate;
+    }
+
+    // ── 6. Check Duplicate Event ID ────────────────────────────────────────
+    const duplicateCheck = await pool.query(
+      'SELECT id FROM agent_events WHERE event_id_str = $1',
+      [eventId.trim()]
+    );
+    if (duplicateCheck.rows.length > 0) {
+      return sendError(res, 409, 'DUPLICATE_EVENT', `Event with ID ${eventId.trim()} already exists.`);
+    }
+
+    // ── 7. Session Lookup & Ownership Verification ─────────────────────────
+    const sessionRes = await pool.query(
+      'SELECT id, user_id, current_trust_score FROM sessions WHERE session_id_str = $1',
+      [sessionId.trim()]
+    );
+    if (sessionRes.rows.length === 0) {
+      return sendError(res, 404, 'SESSION_NOT_FOUND', `Session with ID ${sessionId.trim()} was not found.`);
+    }
+
+    const session = sessionRes.rows[0];
+    if (session.user_id !== req.user.userId) {
+      return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to access this session.');
+    }
+
+    // ── 8. Agent Lookup ────────────────────────────────────────────────────
+    const agentRes = await pool.query(
+      'SELECT id FROM agents WHERE agent_id_str = $1',
+      [agentId.trim()]
+    );
+    if (agentRes.rows.length === 0) {
+      return sendError(res, 404, 'AGENT_NOT_FOUND', `Agent with ID ${agentId.trim()} was not found.`);
+    }
+    const agentUuid = agentRes.rows[0].id;
+
+    // ── 9. Parent Agent Lookup (Optional) ──────────────────────────────────
+    let parentAgentUuid = null;
+    if (parentAgentId && typeof parentAgentId === 'string' && parentAgentId.trim() !== '') {
+      const parentAgentRes = await pool.query(
+        'SELECT id FROM agents WHERE agent_id_str = $1',
+        [parentAgentId.trim()]
+      );
+      if (parentAgentRes.rows.length === 0) {
+        return sendError(res, 404, 'AGENT_NOT_FOUND', `Parent agent with ID ${parentAgentId.trim()} was not found.`);
+      }
+      parentAgentUuid = parentAgentRes.rows[0].id;
+    }
+
+    // ── 10. Persist Event Evidence into DB ─────────────────────────────────
+    const internalUuid = uuidv4();
+
+    await pool.query(
+      `INSERT INTO agent_events (
+        id,
+        event_id_str,
+        session_id,
+        agent_id,
+        parent_agent_id,
+        timestamp,
+        action,
+        tool,
+        resource,
+        data_sensitivity,
+        reported_auth_status,
+        required_permission,
+        reported_granted_permissions,
+        provenance_source_type,
+        provenance_source_id,
+        provenance_trust_level,
+        event_metadata,
+        attack_chain_id
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, NULL
+      )`,
+      [
+        internalUuid,
+        eventId.trim(),
+        session.id,
+        agentUuid,
+        parentAgentUuid,
+        eventTimestamp.toISOString(),
+        action.trim(),
+        tool.trim(),
+        resource.trim(),
+        dataSensitivity,
+        authorization.status,
+        requiredPermission,
+        grantedPermissions,
+        provenance.sourceType,
+        provenance.sourceId.trim(),
+        provenance.trustLevel,
+        JSON.stringify(rawMeta),
+      ]
+    );
+
+    // ── 11. Return Contract-Compliant Security Result Response ─────────────
+    // Cycle 2.4 establishes ingestion pipeline. Full intelligence evaluations execute in Cycle 3.
+    return res.status(201).json({
+      eventId: eventId.trim(),
+      decision: 'ALLOW',
+      riskLevel: dataSensitivity === 'CRITICAL' ? 'HIGH' : 'LOW',
+      trustScore: session.current_trust_score,
+      intent: {
+        status: 'ALIGNED',
+        alignmentScore: 1.0,
+      },
+      attackChain: {
+        detected: false,
+        severity: 'NONE',
+        chainId: null,
+      },
+      securitySignals: {
+        policyViolation: false,
+        intentDrift: false,
+        provenanceRisk: provenance.trustLevel === 'UNTRUSTED' ? 'HIGH' : 'LOW',
+        dataSensitivity,
+        attackChainRisk: 'NONE',
+      },
+      reasons: ['Event telemetry ingested successfully.'],
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+/**
+ * GET /api/agent/events
+ * Fetch historic telemetry logs and action streams for audit.
+ */
+async function listEvents(req, res, next) {
+  try {
+    const { sessionId, agentId, limit } = req.query;
+
+    const queryLimit = parseInt(limit, 10) || 50;
+    if (queryLimit < 1 || queryLimit > 1000 || !Number.isFinite(queryLimit)) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Parameter limit must be an integer between 1 and 1000.');
+    }
+
+    // If specific sessionId filter provided, verify ownership
+    if (sessionId) {
+      const sessionCheck = await pool.query(
+        'SELECT id, user_id FROM sessions WHERE session_id_str = $1',
+        [String(sessionId).trim()]
+      );
+      if (sessionCheck.rows.length === 0) {
+        return sendError(res, 404, 'SESSION_NOT_FOUND', `Session with ID ${sessionId} was not found.`);
+      }
+      if (sessionCheck.rows[0].user_id !== req.user.userId) {
+        return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to access this session.');
+      }
+    }
+
+    const query = `
+      SELECT
+        e.event_id_str,
+        s.session_id_str,
+        a.agent_id_str,
+        pa.agent_id_str AS parent_agent_id_str,
+        e.timestamp,
+        e.action,
+        e.tool,
+        e.resource,
+        e.data_sensitivity,
+        e.reported_auth_status,
+        e.required_permission,
+        e.reported_granted_permissions,
+        e.provenance_source_type,
+        e.provenance_source_id,
+        e.provenance_trust_level
+      FROM agent_events e
+      JOIN sessions s ON e.session_id = s.id
+      JOIN agents a ON e.agent_id = a.id
+      LEFT JOIN agents pa ON e.parent_agent_id = pa.id
+      WHERE s.user_id = $1
+        AND ($2::text IS NULL OR s.session_id_str = $2)
+        AND ($3::text IS NULL OR a.agent_id_str = $3)
+      ORDER BY e.timestamp ASC
+      LIMIT $4
+    `;
+
+    const params = [
+      req.user.userId,
+      sessionId ? String(sessionId).trim() : null,
+      agentId ? String(agentId).trim() : null,
+      queryLimit,
+    ];
+
+    const result = await pool.query(query, params);
+
+    const formattedEvents = result.rows.map(row => ({
+      eventId: row.event_id_str,
+      sessionId: row.session_id_str,
+      agentId: row.agent_id_str,
+      parentAgentId: row.parent_agent_id_str || null,
+      timestamp: row.timestamp,
+      action: row.action,
+      tool: row.tool,
+      resource: row.resource,
+      dataSensitivity: row.data_sensitivity,
+      authorization: {
+        status: row.reported_auth_status,
+        requiredPermission: row.required_permission || null,
+        grantedPermissions: row.reported_granted_permissions || [],
+      },
+      provenance: {
+        sourceType: row.provenance_source_type,
+        sourceId: row.provenance_source_id,
+        trustLevel: row.provenance_trust_level,
+      },
+    }));
+
+    return res.status(200).json({
+      events: formattedEvents,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { ingestEvent, listEvents };

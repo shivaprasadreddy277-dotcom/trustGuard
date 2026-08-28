@@ -1,360 +1,379 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   RefreshCw,
-  Shield,
-  Clock,
+  Eye,
   FileCode,
   AlertTriangle,
-  Layers,
+  Copy,
+  Check,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
-import { eventsApi, agentsApi, securityApi, sessionsApi } from '../api/client';
+import { eventsApi, securityApi, agentsApi, sessionsApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
 import RiskBadge from '../components/security/RiskBadge';
-import TrustScoreMeter from '../components/security/TrustScoreMeter';
 import PolicyResultCard from '../components/security/PolicyResultCard';
 import ProvenanceResultCard from '../components/security/ProvenanceResultCard';
 import IntentResultCard from '../components/security/IntentResultCard';
 
 const Investigations = () => {
   const [events, setEvents] = useState([]);
-  const [agents, setAgents] = useState({});
+  const [agents, setAgents] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(null);
-  const [activeEvent, setActiveEvent] = useState(null);
-  const [decisionData, setDecisionData] = useState(null);
-  const [sessionData, setSessionData] = useState(null);
-
+  const [securityDecision, setSecurityDecision] = useState(null);
+  const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'POLICY' | 'PROVENANCE' | 'INTENT' | 'JSON'
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingDecision, setIsLoadingDecision] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('engines'); // 'engines' | 'evidence'
+  const [copied, setCopied] = useState(false);
 
-  const fetchInitialData = async () => {
+  const fetchEvents = useCallback(async () => {
     setIsLoadingEvents(true);
     setError(null);
     try {
-      const [eventsRes, agentsRes] = await Promise.all([
-        eventsApi.listEvents({ limit: 50 }),
+      const [evRes, agRes, sessRes] = await Promise.allSettled([
+        eventsApi.listEvents({ limit: 30 }),
         agentsApi.listAgents(),
+        sessionsApi.listSessions(),
       ]);
 
-      const rawEvents = eventsRes?.events || [];
+      const rawEvents = evRes.status === 'fulfilled' ? evRes.value.events || [] : [];
+      const rawAgents = agRes.status === 'fulfilled' ? agRes.value.agents || [] : [];
+      const rawSessions = sessRes.status === 'fulfilled' ? sessRes.value.sessions || [] : [];
+
       setEvents(rawEvents);
+      setAgents(rawAgents);
+      setSessions(rawSessions);
 
-      const aMap = {};
-      (agentsRes?.agents || []).forEach((a) => {
-        aMap[a.agentId] = a;
-      });
-      setAgents(aMap);
-
-      if (rawEvents.length > 0) {
+      if (rawEvents.length > 0 && !selectedEventId) {
         setSelectedEventId(rawEvents[0].eventId);
-        setActiveEvent(rawEvents[0]);
       }
     } catch (err) {
-      setError(err.message || 'Failed to load investigation telemetry stream.');
+      setError(err.message || 'Failed to load telemetry events.');
     } finally {
       setIsLoadingEvents(false);
     }
-  };
+  }, [selectedEventId]);
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    fetchEvents();
+  }, [fetchEvents]);
 
-  // Fetch full decision & session details whenever active event changes
+  // Fetch security decision whenever selectedEventId changes
   useEffect(() => {
-    if (!activeEvent) {
-      setDecisionData(null);
-      setSessionData(null);
-      return;
-    }
+    if (!selectedEventId) return;
 
     let isMounted = true;
-    const fetchDetails = async () => {
+    async function loadDecision() {
       setIsLoadingDecision(true);
       try {
-        const [decRes, sessRes] = await Promise.allSettled([
-          securityApi.getDecision(activeEvent.eventId),
-          sessionsApi.getSession(activeEvent.sessionId),
-        ]);
-
-        if (isMounted) {
-          if (decRes.status === 'fulfilled') setDecisionData(decRes.value);
-          else setDecisionData(null);
-
-          if (sessRes.status === 'fulfilled') setSessionData(sessRes.value);
-          else setSessionData(null);
-        }
+        const dec = await securityApi.getDecision(selectedEventId);
+        if (isMounted) setSecurityDecision(dec);
+      } catch (err) {
+        if (isMounted) setSecurityDecision(null);
       } finally {
         if (isMounted) setIsLoadingDecision(false);
       }
-    };
-
-    fetchDetails();
+    }
+    loadDecision();
     return () => {
       isMounted = false;
     };
-  }, [activeEvent]);
+  }, [selectedEventId]);
 
-  const handleSelectEvent = (ev) => {
-    setSelectedEventId(ev.eventId);
-    setActiveEvent(ev);
+  const selectedEvent = events.find((e) => e.eventId === selectedEventId) || events[0];
+  const selectedAgent = agents.find((a) => a.agentId === selectedEvent?.agentId);
+  const selectedSession = sessions.find((s) => s.sessionId === selectedEvent?.sessionId);
+
+  const handleCopyJson = () => {
+    if (!securityDecision) return;
+    navigator.clipboard.writeText(JSON.stringify(securityDecision, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
-
-  const handleDirectSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    const match = events.find((ev) => ev.eventId === searchQuery.trim());
-    if (match) {
-      handleSelectEvent(match);
-    } else {
-      // Try to query direct decision from API
-      try {
-        setIsLoadingDecision(true);
-        const dec = await securityApi.getDecision(searchQuery.trim());
-        setDecisionData(dec);
-        setActiveEvent({
-          eventId: searchQuery.trim(),
-          action: 'Queried from Forensic Registry',
-          tool: 'Security Index',
-          resource: 'Unknown',
-          dataSensitivity: 'HIGH',
-          timestamp: new Date().toISOString(),
-        });
-      } catch (err) {
-        setError(`Event ${searchQuery.trim()} not found: ${err.message}`);
-      } finally {
-        setIsLoadingDecision(false);
-      }
-    }
-  };
-
-  const filteredEvents = events.filter((ev) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      ev.eventId?.toLowerCase().includes(q) ||
-      ev.agentId?.toLowerCase().includes(q) ||
-      ev.action?.toLowerCase().includes(q) ||
-      ev.resource?.toLowerCase().includes(q)
-    );
-  });
-
-  const activeAgent = activeEvent ? agents[activeEvent.agentId] : null;
-  const decision = decisionData?.decision || (activeEvent?.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
-  const riskLevel = decisionData?.riskLevel || (activeEvent?.dataSensitivity === 'CRITICAL' ? 'CRITICAL' : 'LOW');
-  const trustScore = decisionData?.trustScore ?? (activeAgent?.currentTrustScore || 95);
-  const signals = decisionData?.securitySignals || {};
-  const reasons = decisionData?.reasons || [];
 
   return (
     <div className="page-container">
-      {/* Page Header */}
-      <div className="page-header">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2>3.7 Deep Forensic Investigation</h2>
-          <p className="page-subtitle">
-            Inspect authoritative security telemetry, 5-engine analysis traces, and dynamic trust impact.
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              FORENSIC LAB
+            </span>
+            <span className="text-xs text-muted">// Case Evidence & Multi-Engine Chain-of-Custody</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold text-slate-900">
+            Forensic Investigation Workbench
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Deep-dive forensic evaluation: Event &rarr; Evidence &rarr; Policy &rarr; Provenance &rarr; Intent &rarr; Risk &rarr; Trust &rarr; Verdict.
           </p>
         </div>
-        <div className="page-actions">
-          <button className="btn-secondary" onClick={fetchInitialData} disabled={isLoadingEvents}>
-            <RefreshCw size={15} className={isLoadingEvents ? 'spinner' : ''} />
-            <span>Refresh Stream</span>
-          </button>
-        </div>
+
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={fetchEvents}
+          disabled={isLoadingEvents}
+        >
+          <RefreshCw size={14} className={isLoadingEvents ? 'spinner' : ''} />
+          <span>Refresh Workbench</span>
+        </button>
       </div>
 
-      {/* Direct Search Bar */}
-      <form onSubmit={handleDirectSearch} className="investigation-search-bar">
-        <Search size={18} />
-        <input
-          type="text"
-          placeholder="Lookup by public eventId (e.g. evt_01j6abc123) or filter by action/resource..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <button type="submit" className="btn-primary">
-          Investigate
-        </button>
-      </form>
-
       {error && (
-        <div className="form-error-banner">
-          <AlertTriangle size={16} />
+        <div className="error-banner">
+          <AlertTriangle size={18} />
           <span>{error}</span>
         </div>
       )}
 
-      {/* 2-Column Investigation Layout */}
-      <div className="investigation-split-workbench">
-        {/* Left Column: Event Stream Selector */}
-        <div className="investigation-sidebar-panel">
-          <div className="panel-header">
-            <h3>Telemetry Events ({filteredEvents.length})</h3>
+      {/* Main Split Layout: Event Selector on Left, Forensic Workbench on Right */}
+      <div className="editorial-split-grid">
+        {/* Left Column: Events Selector List */}
+        <div className="editorial-card" style={{ maxHeight: '720px' }}>
+          <div className="card-editorial-head">
+            <h3>
+              <Eye size={18} className="text-indigo" />
+              <span>Select Telemetry Event ({events.length})</span>
+            </h3>
           </div>
 
           {isLoadingEvents ? (
-            <div className="panel-loading">
-              <RefreshCw className="spinner" size={20} />
-              <span>Loading telemetry...</span>
+            <div className="loading-state">
+              <RefreshCw className="spinner" size={18} />
+              <span>Loading event stream...</span>
             </div>
-          ) : filteredEvents.length === 0 ? (
-            <div className="panel-empty">No events match search.</div>
+          ) : events.length === 0 ? (
+            <div className="empty-state-card">
+              <p>No events available to inspect.</p>
+            </div>
           ) : (
-            <div className="events-select-list">
-              {filteredEvents.map((ev) => (
-                <div
-                  key={ev.eventId}
-                  className={`event-select-card ${selectedEventId === ev.eventId ? 'active' : ''}`}
-                  onClick={() => handleSelectEvent(ev)}
-                >
-                  <div className="event-card-top">
-                    <span className="event-card-id"><code>{ev.eventId}</code></span>
-                    <span className="event-card-time">
-                      {new Date(ev.timestamp || Date.now()).toLocaleTimeString()}
-                    </span>
+            <div className="flex flex-col gap-2 overflow-y-auto pr-1">
+              {events.map((ev) => {
+                const isSelected = ev.eventId === selectedEventId;
+                return (
+                  <div
+                    key={ev.eventId}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-indigo-50 border-indigo-500 shadow-sm'
+                        : 'bg-canvas-bg border-border hover:border-slate-300'
+                    }`}
+                    onClick={() => setSelectedEventId(ev.eventId)}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="mono-val text-xs font-bold text-indigo">{ev.eventId}</span>
+                      <span className="text-[11px] text-slate-400">
+                        {new Date(ev.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-800">{ev.action}</div>
+                    <div className="text-xs text-slate-500 truncate mono-val">{ev.resource}</div>
                   </div>
-                  <div className="event-card-action">
-                    <strong>{ev.action}</strong>
-                  </div>
-                  <div className="event-card-meta">
-                    <span>{ev.agentId}</span>
-                    <span className={`sensitivity-badge sensitivity-${ev.dataSensitivity?.toLowerCase()}`}>
-                      {ev.dataSensitivity}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Right Column: Deep Forensic Trace Panel */}
-        <div className="investigation-main-panel">
-          {!activeEvent ? (
-            <div className="empty-state-card">
-              <Shield size={36} />
-              <h3>Select an event to inspect its forensic trace</h3>
-            </div>
-          ) : (
-            <>
-              {/* Active Header */}
-              <div className="investigation-active-header">
-                <div className="active-header-left">
-                  <div className="active-badge-row">
-                    <DecisionBadge decision={decision} size="large" />
-                    <RiskBadge riskLevel={riskLevel} size="large" />
+        {/* Right Column: Multi-Engine Forensic Analysis Workbench */}
+        <div className="editorial-card flex-1">
+          {selectedEvent ? (
+            <div>
+              {/* Event Top Banner */}
+              <div className="flex items-center justify-between border-b border-border pb-4 mb-4 flex-wrap gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-xl font-bold text-slate-900">
+                      {selectedEvent.action}
+                    </h2>
+                    <span className="mono-val text-xs text-indigo font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                      {selectedEvent.eventId}
+                    </span>
                   </div>
-                  <h3>Event: <code>{activeEvent.eventId}</code></h3>
-                  <div className="active-meta-row">
-                    <span><Clock size={13} /> {new Date(activeEvent.timestamp || Date.now()).toLocaleString()}</span>
-                    <span>• Agent: <strong>{activeEvent.agentId}</strong></span>
-                    <span>• Session: <strong>{activeEvent.sessionId}</strong></span>
-                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Tool: <strong>{selectedEvent.tool}</strong> • Target:{' '}
+                    <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">{selectedEvent.resource}</code>
+                  </p>
                 </div>
-                <div className="active-header-right">
-                  <span className="trust-impact-label">DYNAMIC TRUST</span>
-                  <TrustScoreMeter score={trustScore} />
+
+                <div className="flex items-center gap-2">
+                  <RiskBadge risk={securityDecision?.riskLevel || selectedEvent.dataSensitivity || 'LOW'} />
+                  <DecisionBadge decision={securityDecision?.decision || 'ALLOW'} size="large" />
                 </div>
               </div>
 
-              {/* Navigation Tabs */}
-              <div className="investigation-nav-tabs">
+              {/* Forensic Navigation Tabs */}
+              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-4 overflow-x-auto">
                 <button
-                  className={`investigation-tab-btn ${activeTab === 'engines' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('engines')}
+                  type="button"
+                  className={`btn btn-xs ${activeTab === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActiveTab('ALL')}
                 >
-                  <Shield size={16} />
-                  <span>5-Engine Security Arbitration Matrix</span>
+                  Complete 5-Engine Analysis
                 </button>
                 <button
-                  className={`investigation-tab-btn ${activeTab === 'evidence' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('evidence')}
+                  type="button"
+                  className={`btn btn-xs ${activeTab === 'POLICY' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActiveTab('POLICY')}
                 >
-                  <FileCode size={16} />
-                  <span>Raw Ingested Evidence JSON</span>
+                  3.1 Policy
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs ${activeTab === 'PROVENANCE' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActiveTab('PROVENANCE')}
+                >
+                  3.2 Provenance
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs ${activeTab === 'INTENT' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActiveTab('INTENT')}
+                >
+                  3.3 Intent Integrity
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs ${activeTab === 'JSON' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActiveTab('JSON')}
+                >
+                  <FileCode size={13} />
+                  <span>Raw JSON</span>
                 </button>
               </div>
 
-              {/* Tab Content */}
-              {activeTab === 'engines' ? (
-                <div className="investigation-engines-view">
-                  {isLoadingDecision && (
-                    <div className="loading-bar-indicator">
-                      <RefreshCw className="spinner" size={16} />
-                      <span>Updating security intelligence engines...</span>
-                    </div>
-                  )}
-
-                  <div className="engines-evaluation-stack">
-                    {/* 3.1 Policy Engine */}
-                    <PolicyResultCard
-                      requiredPermission={activeEvent.authorization?.requiredPermission}
-                      registeredPermissions={activeAgent?.permissions || []}
-                      reportedAuthStatus={activeEvent.authorization?.status}
-                      reportedGrantedPermissions={activeEvent.authorization?.grantedPermissions || []}
-                      policyViolation={signals.policyViolation}
-                      reason={reasons.find((r) => r.toLowerCase().includes('policy') || r.toLowerCase().includes('permission'))}
-                    />
-
-                    {/* 3.2 Provenance Engine */}
-                    <ProvenanceResultCard
-                      sourceType={activeEvent.provenance?.sourceType}
-                      sourceId={activeEvent.provenance?.sourceId}
-                      trustLevel={activeEvent.provenance?.trustLevel}
-                      provenanceRisk={signals.provenanceRisk || 'LOW'}
-                      reason={reasons.find((r) => r.toLowerCase().includes('provenance'))}
-                    />
-
-                    {/* 3.3 Intent Integrity Engine */}
-                    <IntentResultCard
-                      originalIntent={sessionData?.originalIntent || sessionData?.original_intent || activeAgent?.declaredObjective}
-                      action={activeEvent.action}
-                      resource={activeEvent.resource}
-                      status={decisionData?.intent?.status || 'ALIGNED'}
-                      alignmentScore={decisionData?.intent?.alignmentScore ?? 1.0}
-                      intentDrift={signals.intentDrift}
-                      reason={reasons.find((r) => r.toLowerCase().includes('intent'))}
-                    />
+              {isLoadingDecision ? (
+                <div className="loading-state">
+                  <RefreshCw className="spinner" size={20} />
+                  <span>Evaluating security intelligence...</span>
+                </div>
+              ) : activeTab === 'JSON' ? (
+                <div className="raw-evidence-box">
+                  <div className="evidence-head">
+                    <FileCode size={16} className="text-indigo" />
+                    <h4>Authoritative Forensic JSON Evidence</h4>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-xs ml-auto"
+                      onClick={handleCopyJson}
+                    >
+                      {copied ? <Check size={13} /> : <Copy size={13} />}
+                      <span>{copied ? 'Copied' : 'Copy JSON'}</span>
+                    </button>
                   </div>
-
-                  {/* Explainable Reasons Summary */}
-                  {reasons && reasons.length > 0 && (
-                    <div className="reasons-summary-box">
-                      <div className="reasons-header">
-                        <Layers size={16} />
-                        <h4>Authoritative Security Findings ({reasons.length})</h4>
-                      </div>
-                      <ul className="reasons-list">
-                        {reasons.map((reasonText, idx) => (
-                          <li key={idx} className="reason-item">
-                            <span className="reason-dot" />
-                            <span>{reasonText}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <pre className="evidence-pre">
+                    {JSON.stringify(securityDecision || selectedEvent, null, 2)}
+                  </pre>
                 </div>
               ) : (
-                <div className="investigation-evidence-view">
-                  <div className="raw-json-inspector-box">
-                    <h4>Authoritative Event Record</h4>
-                    <pre>{JSON.stringify(activeEvent, null, 2)}</pre>
-                  </div>
-                  {decisionData && (
-                    <div className="raw-json-inspector-box">
-                      <h4>Authoritative Security Decision Record</h4>
-                      <pre>{JSON.stringify(decisionData, null, 2)}</pre>
+                <div className="flex flex-col gap-4">
+                  {(activeTab === 'ALL' || activeTab === 'POLICY') && (
+                    <PolicyResultCard
+                      requiredPermission={
+                        securityDecision?.policy?.requiredPermission ||
+                        selectedEvent.authorization?.requiredPermission
+                      }
+                      registeredPermissions={
+                        selectedAgent?.permissions || securityDecision?.policy?.registeredPermissions || []
+                      }
+                      reportedAuthStatus={
+                        securityDecision?.policy?.reportedAuthStatus ||
+                        selectedEvent.authorization?.status
+                      }
+                      reportedGrantedPermissions={
+                        securityDecision?.policy?.reportedGrantedPermissions ||
+                        selectedEvent.authorization?.grantedPermissions ||
+                        []
+                      }
+                      policyViolation={
+                        securityDecision?.securitySignals?.policyViolation ||
+                        securityDecision?.policy?.violation ||
+                        false
+                      }
+                      reason={securityDecision?.reasons?.find((r) => r.toLowerCase().includes('policy'))}
+                    />
+                  )}
+
+                  {(activeTab === 'ALL' || activeTab === 'PROVENANCE') && (
+                    <ProvenanceResultCard
+                      sourceType={
+                        securityDecision?.provenance?.sourceType || selectedEvent.provenance?.sourceType
+                      }
+                      sourceId={
+                        securityDecision?.provenance?.sourceId || selectedEvent.provenance?.sourceId
+                      }
+                      trustLevel={
+                        securityDecision?.provenance?.trustLevel ||
+                        selectedEvent.provenance?.trustLevel
+                      }
+                      provenanceRisk={
+                        securityDecision?.provenance?.risk ||
+                        (selectedEvent.provenance?.trustLevel === 'UNTRUSTED' ? 'HIGH' : 'LOW')
+                      }
+                      reason={securityDecision?.reasons?.find(
+                        (r) =>
+                          r.toLowerCase().includes('provenance') || r.toLowerCase().includes('untrusted')
+                      )}
+                    />
+                  )}
+
+                  {(activeTab === 'ALL' || activeTab === 'INTENT') && (
+                    <IntentResultCard
+                      originalIntent={
+                        selectedSession?.originalIntent ||
+                        selectedAgent?.declaredObjective ||
+                        'Analyze quarterly financial telemetry'
+                      }
+                      action={selectedEvent.action}
+                      resource={selectedEvent.resource}
+                      status={securityDecision?.intent?.status || 'ALIGNED'}
+                      alignmentScore={securityDecision?.intent?.alignmentScore ?? 1.0}
+                      intentDrift={securityDecision?.intent?.status === 'DRIFT'}
+                      reason={securityDecision?.reasons?.find(
+                        (r) => r.toLowerCase().includes('intent') || r.toLowerCase().includes('drift')
+                      )}
+                    />
+                  )}
+
+                  {/* Dynamic Trust & Risk Impact Card */}
+                  {activeTab === 'ALL' && (
+                    <div className="engine-card engine-card-clean">
+                      <div className="engine-card-header">
+                        <div className="engine-title-wrap">
+                          <Shield className="engine-status-icon text-indigo" size={20} />
+                          <div>
+                            <h4>3.4 & 3.5 Risk Arbitration & Dynamic Trust Impact</h4>
+                            <span className="engine-subtitle">Living Mathematical Agent Reputation</span>
+                          </div>
+                        </div>
+                        <span className="font-display font-bold text-sm text-slate-800">
+                          Resulting Trust: {securityDecision?.trustScore ?? 90} / 100
+                        </span>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700">
+                        <strong>Security Reasons Evaluated:</strong>
+                        <ul className="list-disc pl-5 mt-1 space-y-1">
+                          {securityDecision?.reasons?.map((r, idx) => (
+                            <li key={idx}>{r}</li>
+                          )) || <li>Normal benign operation within baseline.</li>}
+                        </ul>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
-            </>
+            </div>
+          ) : (
+            <div className="empty-state-card">
+              <Search size={36} />
+              <p>Select an event from the left panel to inspect.</p>
+            </div>
           )}
         </div>
       </div>

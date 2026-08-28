@@ -1,281 +1,255 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   Shield,
-  Filter,
-  RefreshCw,
-  AlertCircle,
-  Clock,
   CheckCircle2,
-  XCircle,
-  Info,
-  X,
+  AlertTriangle,
+  RefreshCw,
+  Search,
+  Filter,
+  Sparkles,
+  Key,
+  Target,
 } from 'lucide-react';
-import { agentsApi } from '../api/client';
+import { agentsApi, eventsApi } from '../api/client';
 
 const Agents = () => {
   const [agents, setAgents] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [events, setEvents] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Selected agent for detail modal
-  const [selectedAgent, setSelectedAgent] = useState(null);
-  const [agentTrustHistory, setAgentTrustHistory] = useState(null);
-
-  const fetchAgents = async (status = statusFilter) => {
+  const fetchAgents = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await agentsApi.listAgents(status ? { status } : {});
-      setAgents(data.agents || []);
+      const [agentsRes, eventsRes] = await Promise.allSettled([
+        agentsApi.listAgents(statusFilter !== 'ALL' ? statusFilter : undefined),
+        eventsApi.listEvents({ limit: 100 }),
+      ]);
+
+      const rawAgents = agentsRes.status === 'fulfilled' ? agentsRes.value.agents || [] : [];
+      const rawEvents = eventsRes.status === 'fulfilled' ? eventsRes.value.events || [] : [];
+
+      setAgents(rawAgents);
+      setEvents(rawEvents);
     } catch (err) {
-      setError(err.message || 'Failed to fetch agent profiles.');
+      setError(err.message || 'Failed to load agent fleet.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchAgents(statusFilter);
   }, [statusFilter]);
 
-  const handleOpenDetail = async (agentId) => {
-    setIsModalLoading(true);
-    try {
-      const [agentRes, trustRes] = await Promise.all([
-        agentsApi.getAgent(agentId),
-        agentsApi.getAgentTrust(agentId),
-      ]);
-      setSelectedAgent(agentRes.agent);
-      setAgentTrustHistory(trustRes);
-    } catch (err) {
-      console.error('Failed to load agent details:', err);
-    } finally {
-      setIsModalLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchAgents();
+  }, [fetchAgents]);
 
-  const closeModal = () => {
-    setSelectedAgent(null);
-    setAgentTrustHistory(null);
-  };
+  const filteredAgents = agents.filter((ag) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      ag.name?.toLowerCase().includes(q) ||
+      ag.agentId?.toLowerCase().includes(q) ||
+      ag.declaredObjective?.toLowerCase().includes(q)
+    );
+  });
+
+  const featuredAgent = filteredAgents[0] || agents[0];
+  const otherAgents = filteredAgents.slice(1);
 
   return (
     <div className="page-container">
-      <div className="page-header flex-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2>Monitored AI Agents</h2>
-          <p className="subtitle">Authoritative agent registry, baseline objectives, and trust scores</p>
-        </div>
-        <div className="header-btn-group">
-          <div className="filter-group">
-            <Filter size={16} className="text-muted" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="select-input"
-            >
-              <option value="">All Statuses</option>
-              <option value="ACTIVE">Active Only</option>
-              <option value="SUSPENDED">Suspended Only</option>
-            </select>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              FLEET DIRECTORY
+            </span>
+            <span className="text-xs text-muted">// Living Agent Identities</span>
           </div>
-          <button className="secondary-btn" onClick={() => fetchAgents(statusFilter)} disabled={isLoading}>
-            <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
-            <span>Refresh</span>
-          </button>
+          <h1 className="font-display text-2xl font-bold text-slate-900">
+            Monitored AI Agent Fleet
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Every AI agent identity has an authoritative permission registry, declared baseline objective, and dynamic reputation score.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={fetchAgents}
+          disabled={isLoading}
+        >
+          <RefreshCw size={14} className={isLoading ? 'spinner' : ''} />
+          <span>Refresh Fleet</span>
+        </button>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="chains-filter-bar">
+        <div className="filter-search-box">
+          <Search size={16} className="text-muted" />
+          <input
+            type="text"
+            placeholder="Search by agent name, ID, or declared objective..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter size={15} className="text-muted" />
+          <select
+            className="filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">Active Only</option>
+            <option value="SUSPENDED">Suspended Only</option>
+          </select>
         </div>
       </div>
 
       {error && (
-        <div className="auth-alert error mb-4">
-          <AlertCircle size={18} />
+        <div className="error-banner">
+          <AlertTriangle size={18} />
           <span>{error}</span>
         </div>
       )}
 
       {isLoading ? (
-        <div className="card-loader py-12">
-          <div className="spinner" />
-          <p className="mt-4">Loading registered agent profiles from backend...</p>
+        <div className="loading-state">
+          <RefreshCw className="spinner" size={22} />
+          <span>Loading agent fleet from PostgreSQL...</span>
         </div>
-      ) : agents.length === 0 ? (
-        <div className="empty-card-state card py-12">
-          <Users size={40} className="text-muted mb-3" />
-          <h3>No AI Agents Found</h3>
-          <p className="text-muted">No agent profiles match the current filter criteria.</p>
+      ) : filteredAgents.length === 0 ? (
+        <div className="empty-state-card">
+          <Users size={36} />
+          <p>No agents matching your filter criteria.</p>
         </div>
       ) : (
-        <div className="agents-grid">
-          {agents.map((agent) => {
-            const isHighTrust = agent.currentTrustScore >= 80;
-            const isMedTrust = agent.currentTrustScore >= 50;
-
-            return (
-              <div key={agent.agentId} className="agent-card">
-                <div className="agent-card-header">
+        <div className="flex flex-col gap-6">
+          {/* Featured Agent Spotlight */}
+          {featuredAgent && (
+            <div className="p-6 bg-surface border-2 border-indigo-600 rounded-2xl shadow-md relative overflow-hidden">
+              <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-display font-bold text-lg flex items-center justify-center">
+                    01
+                  </div>
                   <div>
-                    <span className="code-tag">{agent.agentId}</span>
-                    <h3 className="agent-title">{agent.name}</h3>
-                  </div>
-                  <span className={`status-pill ${agent.status.toLowerCase()}`}>
-                    {agent.status === 'ACTIVE' ? (
-                      <CheckCircle2 size={12} className="inline mr-1" />
-                    ) : (
-                      <XCircle size={12} className="inline mr-1" />
-                    )}
-                    {agent.status}
-                  </span>
-                </div>
-
-                <div className="agent-card-body">
-                  <div className="objective-box">
-                    <span className="objective-label">Authoritative Declared Objective:</span>
-                    <p className="objective-text">{agent.declaredObjective}</p>
-                  </div>
-
-                  <div className="trust-meter-container">
-                    <div className="flex-between text-xs mb-1">
-                      <span className="text-muted font-medium">Reputation Trust Score</span>
-                      <strong
-                        className={
-                          isHighTrust
-                            ? 'text-success'
-                            : isMedTrust
-                            ? 'text-warning'
-                            : 'text-danger'
-                        }
-                      >
-                        {agent.currentTrustScore} / 100
-                      </strong>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-display text-xl font-bold text-slate-900">
+                        {featuredAgent.name}
+                      </h2>
+                      <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                        {featuredAgent.agentId}
+                      </span>
                     </div>
-                    <div className="trust-bar-bg">
-                      <div
-                        className="trust-bar-fill"
-                        style={{
-                          width: `${agent.currentTrustScore}%`,
-                          backgroundColor: isHighTrust
-                            ? 'var(--status-allow)'
-                            : isMedTrust
-                            ? 'var(--status-review)'
-                            : 'var(--status-block)',
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="agent-footer-info">
-                    <span className="flex-align text-xs text-muted">
-                      <Clock size={12} className="mr-1" />
-                      Created: {new Date(agent.createdAt).toLocaleDateString()}
+                    <span className="text-xs text-slate-500 font-mono">
+                      PRIMARY MONITORED AGENT // FLEET SPOTLIGHT
                     </span>
-                    <button
-                      className="text-btn btn-sm"
-                      onClick={() => handleOpenDetail(agent.agentId)}
-                    >
-                      <Info size={14} className="mr-1" /> Inspect Profile
-                    </button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Agent Detail Modal */}
-      {selectedAgent && (
-        <div className="modal-backdrop" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header flex-between">
-              <div className="flex-align gap-2">
-                <Shield className="text-accent" size={22} />
-                <h3>Agent Security Profile: {selectedAgent.name}</h3>
-              </div>
-              <button className="icon-close-btn" onClick={closeModal}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="detail-meta-grid">
-                <div>
-                  <span className="meta-label">Public Identifier</span>
-                  <span className="code-tag">{selectedAgent.agentId}</span>
-                </div>
-                <div>
-                  <span className="meta-label">Operational Status</span>
-                  <span className={`status-pill ${selectedAgent.status.toLowerCase()}`}>
-                    {selectedAgent.status}
-                  </span>
-                </div>
-                <div>
-                  <span className="meta-label">Trust Score</span>
-                  <strong className="text-success text-base">
-                    {selectedAgent.currentTrustScore}/100
-                  </strong>
-                </div>
-                <div>
-                  <span className="meta-label">Registered At</span>
-                  <span className="text-sm">
-                    {new Date(selectedAgent.createdAt).toLocaleString()}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className="text-xs text-slate-400 block font-bold uppercase tracking-wider">
+                      Trust Score
+                    </span>
+                    <span className="font-display text-2xl font-extrabold text-slate-900">
+                      {featuredAgent.currentTrustScore}{' '}
+                      <span className="text-xs font-normal text-slate-400">/ 100</span>
+                    </span>
+                  </div>
+                  <span className={`status-pill-badge status-${featuredAgent.status.toLowerCase()}`}>
+                    ● {featuredAgent.status}
                   </span>
                 </div>
               </div>
 
-              <div className="detail-section mt-4">
-                <span className="meta-label">Description</span>
-                <p className="detail-desc">
-                  {selectedAgent.description || 'No additional description provided.'}
+              {/* Declared Baseline Objective */}
+              <div className="p-4 bg-canvas-bg border border-border rounded-xl mb-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase mb-1">
+                  <Target size={14} className="text-indigo-600" />
+                  <span>Authoritative Declared Objective</span>
+                </div>
+                <p className="text-sm text-slate-800 italic">
+                  "{featuredAgent.declaredObjective || 'No objective recorded'}"
                 </p>
               </div>
 
-              <div className="detail-section mt-4">
-                <span className="meta-label">Declared Objective (Baseline Intent)</span>
-                <div className="objective-box highlighted">
-                  <p>{selectedAgent.declaredObjective}</p>
+              {/* Authoritative Permissions Chips */}
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
+                  <Key size={13} />
+                  <span>Authoritative Registered Permissions:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {featuredAgent.permissions && featuredAgent.permissions.length > 0 ? (
+                    featuredAgent.permissions.map((p) => (
+                      <span
+                        key={p}
+                        className="font-mono text-xs font-semibold text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200"
+                      >
+                        ✓ {p}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400">No permissions registered</span>
+                  )}
                 </div>
               </div>
+            </div>
+          )}
 
-              {agentTrustHistory && (
-                <div className="detail-section mt-4">
-                  <span className="meta-label">Trust Score History Log</span>
-                  <div className="history-table-wrap mt-2">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Timestamp</th>
-                          <th>Score</th>
-                          <th>Evaluation Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {agentTrustHistory.history?.map((h, i) => (
-                          <tr key={i}>
-                            <td>{new Date(h.timestamp).toLocaleString()}</td>
-                            <td>
-                              <span className="font-semibold text-success">{h.score}</span>
-                            </td>
-                            <td className="text-muted">{h.reason}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          {/* Surrounding Fleet Cards */}
+          {otherAgents.length > 0 && (
+            <div>
+              <h3 className="font-display text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">
+                Other Registered Agents ({otherAgents.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {otherAgents.map((ag) => (
+                  <div
+                    key={ag.agentId}
+                    className="p-5 bg-surface border border-border rounded-xl shadow-sm hover:border-indigo-300 hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-sm text-slate-900">{ag.name}</span>
+                        <span className={`status-pill-badge status-${ag.status.toLowerCase()}`}>
+                          {ag.status}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs font-semibold text-indigo-700 block mb-2">
+                        {ag.agentId}
+                      </span>
+                      <p className="text-xs text-slate-600 line-clamp-2 italic mb-3">
+                        "{ag.declaredObjective}"
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs text-slate-400 font-semibold">Trust Reputation</span>
+                      <span
+                        className={`text-sm font-bold ${
+                          ag.currentTrustScore >= 80 ? 'text-emerald-700' : 'text-amber-700'
+                        }`}
+                      >
+                        {ag.currentTrustScore} / 100
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-
-            <div className="modal-footer flex-between">
-              <span className="text-xs text-muted">
-                Authoritative security profile verified by TrustGuard Backend
-              </span>
-              <button className="primary-btn btn-sm" onClick={closeModal}>
-                Done
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>

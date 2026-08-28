@@ -1,49 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  PlusCircle,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  Sparkles,
+  Radio,
+  Plus,
+  RefreshCw,
+  AlertTriangle,
+  Target,
+  Compass,
   ArrowRight,
-  Copy,
-  Check,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
-import { sessionsApi } from '../api/client';
+import { sessionsApi, agentsApi } from '../api/client';
 
 const Sessions = () => {
-  // Session creation state
-  const [intentInput, setIntentInput] = useState('');
+  const [sessions, setSessions] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // New Session Form
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newIntent, setNewIntent] = useState('');
+  const [selectedAgentId, setSelectedAgentId] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
-  const [createdSession, setCreatedSession] = useState(null);
+  const [createError, setCreateError] = useState(null);
 
-  // Session search state
-  const [searchId, setSearchId] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState('');
-  const [searchedSession, setSearchedSession] = useState(null);
+  const fetchSessions = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [sessRes, agRes] = await Promise.allSettled([
+        sessionsApi.listSessions(),
+        agentsApi.listAgents(),
+      ]);
 
-  // Recent session history in local state for convenience
-  const [recentSessions, setRecentSessions] = useState([]);
-  const [copiedId, setCopiedId] = useState(null);
+      const rawSessions = sessRes.status === 'fulfilled' ? sessRes.value.sessions || [] : [];
+      const rawAgents = agRes.status === 'fulfilled' ? agRes.value.agents || [] : [];
+
+      setSessions(rawSessions);
+      setAgents(rawAgents);
+      if (rawAgents.length > 0 && !selectedAgentId) {
+        setSelectedAgentId(rawAgents[0].agentId);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load session registry.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedAgentId]);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
 
   const handleCreateSession = async (e) => {
     e.preventDefault();
-    if (!intentInput.trim()) {
-      setCreateError('Please specify the authoritative original intent.');
+    if (!newIntent.trim()) {
+      setCreateError('Original intent baseline is required.');
       return;
     }
-    setCreateError('');
-    setIsCreating(true);
 
+    setIsCreating(true);
+    setCreateError(null);
     try {
-      const data = await sessionsApi.createSession({
-        originalIntent: intentInput.trim(),
+      await sessionsApi.createSession({
+        originalIntent: newIntent.trim(),
+        agentId: selectedAgentId || undefined,
       });
-      setCreatedSession(data);
-      setRecentSessions((prev) => [data, ...prev.filter((s) => s.sessionId !== data.sessionId)]);
-      setIntentInput('');
+
+      setNewIntent('');
+      setShowCreateModal(false);
+      fetchSessions();
     } catch (err) {
       setCreateError(err.message || 'Failed to initialize session.');
     } finally {
@@ -51,238 +78,247 @@ const Sessions = () => {
     }
   };
 
-  const handleSearchSession = async (e) => {
-    e.preventDefault();
-    if (!searchId.trim()) return;
-    setSearchError('');
-    setIsSearching(true);
-    setSearchedSession(null);
-
-    try {
-      const data = await sessionsApi.getSession(searchId.trim());
-      setSearchedSession(data);
-    } catch (err) {
-      setSearchError(err.message || `Session ${searchId} not found.`);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const copyToClipboard = (id) => {
-    navigator.clipboard.writeText(id);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleQuickIntent = (preset) => {
-    setIntentInput(preset);
-  };
-
   return (
     <div className="page-container">
-      <div className="page-header">
-        <h2>Agent Execution Sessions</h2>
-        <p className="subtitle">
-          Establish and inspect authoritative user intent baselines for continuous alignment
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              INTENT REGISTRY
+            </span>
+            <span className="text-xs text-muted">// Semantic Baseline Arbitration</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold text-slate-900">
+            Session & Intent Integrity
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Every session anchors an Authoritative Intent Baseline. The 3.3 Intent Integrity Engine measures ongoing agent drift against this baseline.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={fetchSessions}
+            disabled={isLoading}
+          >
+            <RefreshCw size={14} className={isLoading ? 'spinner' : ''} />
+            <span>Refresh</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus size={15} />
+            <span>Initialize Session</span>
+          </button>
+        </div>
       </div>
 
-      <div className="sessions-split-layout">
-        {/* Left Column: Create New Session */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex-align gap-2">
-              <PlusCircle size={20} className="text-accent" />
-              <h3>Initialize New Agent Session</h3>
-            </div>
-            <p className="text-sm text-muted mt-1">
-              Registered intent acts as the immutable ground truth for future Intent Integrity evaluations.
+      {/* Visual Intent Drift Teaching Banner */}
+      <div className="p-5 bg-surface border-2 border-indigo-500 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={16} className="text-indigo-600" />
+          <h3 className="font-display text-sm font-bold text-slate-900 uppercase tracking-wider">
+            How TrustGuard Detects Intent Drift
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-3 bg-canvas-bg border border-border rounded-xl">
+            <span className="text-[11px] font-bold text-indigo-700 uppercase block mb-1">
+              01 // AUTHORITATIVE INTENT
+            </span>
+            <p className="text-xs text-slate-700 italic">
+              "Analyze NovaCorp quarterly financial telemetry"
             </p>
           </div>
 
-          <form onSubmit={handleCreateSession} className="session-form">
-            {createError && (
-              <div className="auth-alert error mb-3">
-                <AlertCircle size={16} />
-                <span>{createError}</span>
-              </div>
-            )}
+          <div className="p-3 bg-canvas-bg border border-border rounded-xl">
+            <span className="text-[11px] font-bold text-cyan-700 uppercase block mb-1">
+              02 // OBSERVED ACTION
+            </span>
+            <p className="text-xs text-slate-700 font-mono">
+              agent.query_db("SELECT * FROM credentials")
+            </p>
+          </div>
 
-            <div className="form-group">
-              <label htmlFor="intent">Original User Prompt / Objective</label>
-              <textarea
-                id="intent"
-                rows={4}
-                className="textarea-input"
-                placeholder="e.g., Analyze NovaCorp Q2 and Q3 financial reports and prepare an executive summary."
-                value={intentInput}
-                onChange={(e) => setIntentInput(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="preset-intent-row mb-4">
-              <span className="text-xs text-muted flex-align mr-2">
-                <Sparkles size={12} className="mr-1" /> Quick Presets:
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-rose-700 uppercase block mb-0.5">
+                03 // ALIGNMENT VERDICT
               </span>
+              <span className="font-display font-bold text-sm text-rose-900">
+                0.28 DRIFT DETECTED ⚠
+              </span>
+            </div>
+            <span className="font-mono text-xs font-extrabold text-rose-700 bg-white px-2 py-1 rounded border border-rose-300">
+              BLOCK
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="error-banner">
+          <AlertTriangle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Sessions List */}
+      <div className="editorial-card">
+        <div className="card-editorial-head">
+          <h3>
+            <Radio size={18} className="text-indigo" />
+            <span>Active & Recorded Sessions ({sessions.length})</span>
+          </h3>
+        </div>
+
+        {isLoading ? (
+          <div className="loading-state">
+            <RefreshCw className="spinner" size={20} />
+            <span>Loading sessions from PostgreSQL...</span>
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="empty-state-card">
+            <Radio size={36} />
+            <p>No active sessions found. Initialize a new session to establish an intent baseline.</p>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table-dark">
+              <thead>
+                <tr>
+                  <th>Session ID</th>
+                  <th>Agent Binding</th>
+                  <th>Authoritative Intent Baseline</th>
+                  <th>Trust Score</th>
+                  <th>Status</th>
+                  <th>Started</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((sess) => (
+                  <tr key={sess.sessionId}>
+                    <td className="mono-val font-semibold text-indigo">{sess.sessionId}</td>
+                    <td>
+                      <span className="mono-val text-xs text-slate-700 font-semibold">
+                        {sess.agentId || 'agent_001'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Target size={14} className="text-indigo flex-shrink-0" />
+                        <span className="text-slate-800 text-xs italic font-medium">
+                          "{sess.originalIntent}"
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="font-extrabold text-slate-900 text-sm">
+                        {sess.currentTrustScore ?? 100}{' '}
+                        <span className="text-xs text-slate-400 font-normal">/ 100</span>
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-pill-badge status-${sess.status.toLowerCase()}`}>
+                        ● {sess.status}
+                      </span>
+                    </td>
+                    <td className="text-xs text-slate-500">
+                      {new Date(sess.createdAt || Date.now()).toLocaleTimeString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Create Session Modal */}
+      {showCreateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h3>Initialize New Security Session</h3>
               <button
                 type="button"
-                className="preset-tag"
-                onClick={() =>
-                  handleQuickIntent(
-                    'Analyze NovaCorp Q2 and Q3 reports and prepare an executive summary.'
-                  )
-                }
+                className="btn btn-secondary btn-xs"
+                onClick={() => setShowCreateModal(false)}
               >
-                Financial Analysis
-              </button>
-              <button
-                type="button"
-                className="preset-tag"
-                onClick={() =>
-                  handleQuickIntent(
-                    'Check server metrics, rotate staging logs, and report status.'
-                  )
-                }
-              >
-                DevOps Maintenance
+                ✕
               </button>
             </div>
 
-            <button type="submit" className="primary-btn w-full" disabled={isCreating}>
-              {isCreating ? (
-                <span>Registering Session in Backend...</span>
-              ) : (
-                <>
-                  <span>Create Authoritative Session</span>
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
+            <form onSubmit={handleCreateSession}>
+              <div className="modal-body flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Select Agent
+                  </label>
+                  <select
+                    className="w-full"
+                    value={selectedAgentId}
+                    onChange={(e) => setSelectedAgentId(e.target.value)}
+                  >
+                    {agents.map((ag) => (
+                      <option key={ag.agentId} value={ag.agentId}>
+                        {ag.name} ({ag.agentId})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          {/* Success Banner */}
-          {createdSession && (
-            <div className="session-success-banner mt-4">
-              <div className="flex-between">
-                <span className="flex-align text-success font-semibold text-sm">
-                  <CheckCircle2 size={16} className="mr-1" /> Session Successfully Created
-                </span>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Original Intent (Authoritative Baseline)
+                  </label>
+                  <textarea
+                    rows={3}
+                    className="w-full"
+                    placeholder="e.g. Analyze monthly financial metrics and report quarterly statistics"
+                    value={newIntent}
+                    onChange={(e) => setNewIntent(e.target.value)}
+                    required
+                  />
+                  <span className="text-xs text-slate-500 mt-1 block">
+                    All future actions in this session will be arbitrated for semantic drift against this text.
+                  </span>
+                </div>
+
+                {createError && (
+                  <div className="error-banner text-xs">
+                    <AlertTriangle size={14} />
+                    <span>{createError}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
                 <button
-                  className="copy-id-btn"
-                  onClick={() => copyToClipboard(createdSession.sessionId)}
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowCreateModal(false)}
                 >
-                  {copiedId === createdSession.sessionId ? (
-                    <>
-                      <Check size={14} className="text-success" /> Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} /> Copy ID
-                    </>
-                  )}
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isCreating}
+                >
+                  {isCreating ? 'Initializing...' : 'Establish Baseline & Start'}
                 </button>
               </div>
-
-              <div className="mt-2">
-                <span className="text-xs text-muted">Public Session ID:</span>
-                <div className="code-tag block mt-1 font-mono text-accent">
-                  {createdSession.sessionId}
-                </div>
-              </div>
-
-              <div className="mt-3">
-                <span className="text-xs text-muted">Authoritative Intent Baseline:</span>
-                <p className="intent-box mt-1">{createdSession.originalIntent}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Search & Inspect Session */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex-align gap-2">
-              <Search size={20} className="text-accent" />
-              <h3>Inspect Session Baseline</h3>
-            </div>
-            <p className="text-sm text-muted mt-1">
-              Lookup existing session from real backend using its public ID.
-            </p>
+            </form>
           </div>
-
-          <form onSubmit={handleSearchSession} className="search-session-form">
-            <div className="search-input-wrap">
-              <input
-                type="text"
-                placeholder="Enter Session ID (e.g. sess_9988)"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                required
-              />
-              <button type="submit" className="primary-btn btn-sm" disabled={isSearching}>
-                {isSearching ? 'Searching...' : 'Lookup'}
-              </button>
-            </div>
-          </form>
-
-          {searchError && (
-            <div className="auth-alert error mt-3">
-              <AlertCircle size={16} />
-              <span>{searchError}</span>
-            </div>
-          )}
-
-          {searchedSession && (
-            <div className="session-detail-card mt-4">
-              <div className="flex-between mb-2">
-                <span className="text-xs text-muted uppercase font-semibold">Active Session</span>
-                <span className="code-tag font-mono text-accent">
-                  {searchedSession.sessionId}
-                </span>
-              </div>
-
-              <div className="intent-baseline-container">
-                <span className="meta-label text-xs">Immutable Intent Baseline</span>
-                <p className="intent-quote">"{searchedSession.originalIntent}"</p>
-              </div>
-
-              <div className="session-status-row mt-3 text-xs text-muted flex-between">
-                <span>Evaluated by: TrustGuard Baseline Engine</span>
-                <span className="text-success font-medium">Verified in Database</span>
-              </div>
-            </div>
-          )}
-
-          {/* Quick List of Created Sessions */}
-          {recentSessions.length > 0 && (
-            <div className="recent-sessions-section mt-6">
-              <h4 className="text-xs text-muted uppercase font-semibold mb-2">
-                Recently Created in this Console
-              </h4>
-              <div className="recent-sessions-list">
-                {recentSessions.map((s) => (
-                  <div
-                    key={s.sessionId}
-                    className="recent-session-item"
-                    onClick={() => {
-                      setSearchId(s.sessionId);
-                      setSearchedSession(s);
-                    }}
-                  >
-                    <div className="flex-between">
-                      <span className="code-tag">{s.sessionId}</span>
-                      <span className="text-xs text-muted truncate max-w-[200px]">
-                        {s.originalIntent}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 };

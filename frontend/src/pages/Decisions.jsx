@@ -1,319 +1,290 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldAlert,
-  ShieldCheck,
-  AlertTriangle,
   RefreshCw,
   Search,
-  Layers,
-  ChevronRight,
-  Eye,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
-import { eventsApi, agentsApi, securityApi } from '../api/client';
+import { eventsApi, securityApi, agentsApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
 import RiskBadge from '../components/security/RiskBadge';
-import TrustScoreMeter from '../components/security/TrustScoreMeter';
-import InvestigationModal from '../components/security/InvestigationModal';
+import PolicyResultCard from '../components/security/PolicyResultCard';
+import ProvenanceResultCard from '../components/security/ProvenanceResultCard';
+import IntentResultCard from '../components/security/IntentResultCard';
 
 const Decisions = () => {
   const [events, setEvents] = useState([]);
-  const [agents, setAgents] = useState({});
   const [decisionsMap, setDecisionsMap] = useState({});
+  const [agents, setAgents] = useState([]);
+  const [expandedEventId, setExpandedEventId] = useState(null);
+  const [decisionFilter, setDecisionFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filters
-  const [decisionFilter, setDecisionFilter] = useState('ALL');
-  const [riskFilter, setRiskFilter] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Investigation Modal
-  const [investigatingEvent, setInvestigatingEvent] = useState(null);
-
-  const fetchDecisionsData = async () => {
+  const fetchDecisions = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // 1. Fetch telemetry events
-      const eventsRes = await eventsApi.listEvents({ limit: 100 });
-      const rawEvents = eventsRes?.events || [];
+      const [eventsRes, agentsRes] = await Promise.allSettled([
+        eventsApi.listEvents({ limit: 40 }),
+        agentsApi.listAgents(),
+      ]);
+
+      const rawEvents = eventsRes.status === 'fulfilled' ? eventsRes.value.events || [] : [];
+      const rawAgents = agentsRes.status === 'fulfilled' ? agentsRes.value.agents || [] : [];
+
       setEvents(rawEvents);
+      setAgents(rawAgents);
 
-      // 2. Fetch agents for authoritative permissions/trust lookup
-      const agentsRes = await agentsApi.listAgents();
-      const rawAgents = agentsRes?.agents || [];
-      const aMap = {};
-      rawAgents.forEach((a) => {
-        aMap[a.agentId] = a;
-      });
-      setAgents(aMap);
-
-      // 3. For evaluated events, fetch security decision details in parallel
+      // Fetch security decision for each event
       const decMap = {};
       await Promise.all(
-        rawEvents.slice(0, 30).map(async (ev) => {
+        rawEvents.map(async (ev) => {
           try {
             const dec = await securityApi.getDecision(ev.eventId);
             decMap[ev.eventId] = dec;
           } catch {
-            // If decision record isn't explicitly persisted for a legacy event, continue
+            // Optional decision fallback
           }
         })
       );
       setDecisionsMap(decMap);
     } catch (err) {
-      setError(err.message || 'Failed to load security decisions.');
+      setError(err.message || 'Failed to load security decision records.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchDecisionsData();
   }, []);
 
-  // Filter events based on decision and risk
+  useEffect(() => {
+    fetchDecisions();
+  }, [fetchDecisions]);
+
+  const toggleExpand = (eventId) => {
+    setExpandedEventId((prev) => (prev === eventId ? null : eventId));
+  };
+
   const filteredEvents = events.filter((ev) => {
     const dec = decisionsMap[ev.eventId];
-    const decisionVal = dec?.decision || (ev.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
-    const riskVal = dec?.riskLevel || (ev.dataSensitivity === 'CRITICAL' ? 'CRITICAL' : 'LOW');
+    const verdict = dec?.decision || (ev.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
 
-    if (decisionFilter !== 'ALL' && decisionVal !== decisionFilter) return false;
-    if (riskFilter !== 'ALL' && riskVal !== riskFilter) return false;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchId = ev.eventId?.toLowerCase().includes(q);
-      const matchAgent = ev.agentId?.toLowerCase().includes(q);
-      const matchAction = ev.action?.toLowerCase().includes(q);
-      const matchResource = ev.resource?.toLowerCase().includes(q);
-      if (!matchId && !matchAgent && !matchAction && !matchResource) return false;
+    if (decisionFilter !== 'ALL' && verdict !== decisionFilter) {
+      return false;
     }
-
-    return true;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      ev.eventId?.toLowerCase().includes(q) ||
+      ev.action?.toLowerCase().includes(q) ||
+      ev.resource?.toLowerCase().includes(q) ||
+      ev.tool?.toLowerCase().includes(q)
+    );
   });
-
-  const blockCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'BLOCK').length;
-  const reviewCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'REVIEW').length;
-  const allowCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'ALLOW').length;
 
   return (
     <div className="page-container">
-      {/* Page Header */}
-      <div className="page-header">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2>3.4 Security Decision Center</h2>
-          <p className="page-subtitle">
-            Authoritative verdict registry synthesized from Policy, Provenance, Intent, and Risk engines.
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              DECISION CENTER
+            </span>
+            <span className="text-xs text-muted">// Authoritative Verdicts & Multi-Engine Signals</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold text-slate-900">
+            Security Decision & Risk Center
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Every action decision is backed by Policy, Provenance, Intent Integrity, Risk Scoring, and Dynamic Trust calculations.
           </p>
         </div>
-        <div className="page-actions">
-          <button className="btn-secondary" onClick={fetchDecisionsData} disabled={isLoading}>
-            <RefreshCw size={15} className={isLoading ? 'spinner' : ''} />
-            <span>Refresh Decisions</span>
-          </button>
+
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={fetchDecisions}
+          disabled={isLoading}
+        >
+          <RefreshCw size={14} className={isLoading ? 'spinner' : ''} />
+          <span>Refresh Decisions</span>
+        </button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="chains-filter-bar">
+        <div className="filter-search-box">
+          <Search size={16} className="text-muted" />
+          <input
+            type="text"
+            placeholder="Search by event ID, action, target resource, tool..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter size={15} className="text-muted" />
+          <select
+            className="filter-select"
+            value={decisionFilter}
+            onChange={(e) => setDecisionFilter(e.target.value)}
+          >
+            <option value="ALL">All Verdicts</option>
+            <option value="BLOCK">Blocked Only</option>
+            <option value="REVIEW">Review Only</option>
+            <option value="ALLOW">Allowed Only</option>
+          </select>
         </div>
       </div>
 
-      {/* Decision Summary Counters */}
-      <div className="decision-counters-grid">
-        <div
-          className={`decision-stat-card card-stat-block ${decisionFilter === 'BLOCK' ? 'active-filter' : ''}`}
-          onClick={() => setDecisionFilter(decisionFilter === 'BLOCK' ? 'ALL' : 'BLOCK')}
-        >
-          <div className="stat-icon-wrap bg-red-dim">
-            <ShieldAlert className="text-red" size={22} />
-          </div>
-          <div>
-            <span className="stat-count">{blockCount}</span>
-            <span className="stat-label">BLOCK Verdicts</span>
-          </div>
+      {error && (
+        <div className="error-banner">
+          <AlertTriangle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Decisions Feed */}
+      <div className="editorial-card">
+        <div className="card-editorial-head">
+          <h3>
+            <ShieldAlert size={18} className="text-indigo" />
+            <span>Arbitrated Decisions Feed ({filteredEvents.length})</span>
+          </h3>
         </div>
 
-        <div
-          className={`decision-stat-card card-stat-review ${decisionFilter === 'REVIEW' ? 'active-filter' : ''}`}
-          onClick={() => setDecisionFilter(decisionFilter === 'REVIEW' ? 'ALL' : 'REVIEW')}
-        >
-          <div className="stat-icon-wrap bg-amber-dim">
-            <AlertTriangle className="text-amber" size={22} />
+        {isLoading ? (
+          <div className="loading-state">
+            <RefreshCw className="spinner" size={20} />
+            <span>Loading authoritative decision records...</span>
           </div>
-          <div>
-            <span className="stat-count">{reviewCount}</span>
-            <span className="stat-label">REVIEW Verdicts</span>
+        ) : filteredEvents.length === 0 ? (
+          <div className="empty-state-card">
+            <ShieldAlert size={36} />
+            <p>No security decisions matching filter criteria.</p>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filteredEvents.map((evt) => {
+              const dec = decisionsMap[evt.eventId];
+              const verdict = dec?.decision || (evt.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
+              const risk = dec?.riskLevel || (evt.dataSensitivity === 'CRITICAL' ? 'CRITICAL' : 'LOW');
+              const isExpanded = expandedEventId === evt.eventId;
+              const agent = agents.find((a) => a.agentId === evt.agentId);
 
-        <div
-          className={`decision-stat-card card-stat-allow ${decisionFilter === 'ALLOW' ? 'active-filter' : ''}`}
-          onClick={() => setDecisionFilter(decisionFilter === 'ALLOW' ? 'ALL' : 'ALLOW')}
-        >
-          <div className="stat-icon-wrap bg-green-dim">
-            <ShieldCheck className="text-green" size={22} />
-          </div>
-          <div>
-            <span className="stat-count">{allowCount}</span>
-            <span className="stat-label">ALLOW Verdicts</span>
-          </div>
-        </div>
-      </div>
+              return (
+                <div
+                  key={evt.eventId}
+                  className={`border rounded-xl p-4 bg-surface transition-all shadow-sm ${
+                    verdict === 'BLOCK'
+                      ? 'border-rose-300 bg-rose-50/20'
+                      : verdict === 'REVIEW'
+                      ? 'border-amber-300 bg-amber-50/20'
+                      : 'border-slate-200'
+                  }`}
+                >
+                  <div
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => toggleExpand(evt.eventId)}
+                  >
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <DecisionBadge decision={verdict} />
+                      <RiskBadge risk={risk} />
+                      <span className="mono-val font-semibold text-xs text-indigo">{evt.eventId}</span>
+                      <span className="text-xs text-slate-400">
+                        {new Date(evt.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
 
-      {/* Filter Toolbar */}
-      <div className="filter-card">
-        <div className="filter-inputs-grid">
-          <div className="search-input-wrap">
-            <Search size={16} />
-            <input
-              type="text"
-              placeholder="Search event ID, agent, action, or resource..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-600 font-bold">
+                        {isExpanded ? 'Hide Forensics ▲' : 'Expand Forensics ▼'}
+                      </span>
+                    </div>
+                  </div>
 
-          <div className="filter-select-group">
-            <label>Verdict:</label>
-            <select
-              value={decisionFilter}
-              onChange={(e) => setDecisionFilter(e.target.value)}
-            >
-              <option value="ALL">ALL Verdicts</option>
-              <option value="BLOCK">BLOCK</option>
-              <option value="REVIEW">REVIEW</option>
-              <option value="ALLOW">ALLOW</option>
-            </select>
-          </div>
-
-          <div className="filter-select-group">
-            <label>Risk Level:</label>
-            <select
-              value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
-            >
-              <option value="ALL">ALL Risk Levels</option>
-              <option value="CRITICAL">CRITICAL</option>
-              <option value="HIGH">HIGH</option>
-              <option value="MEDIUM">MEDIUM</option>
-              <option value="LOW">LOW</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Decisions Stream */}
-      {isLoading ? (
-        <div className="loading-state-card">
-          <RefreshCw className="spinner" size={26} />
-          <p>Loading real security decision feed from TrustGuard engines...</p>
-        </div>
-      ) : error ? (
-        <div className="error-state-card">
-          <AlertTriangle size={24} />
-          <p>{error}</p>
-        </div>
-      ) : filteredEvents.length === 0 ? (
-        <div className="empty-state-card">
-          <ShieldCheck size={32} />
-          <h3>No decisions match selected filters</h3>
-          <p>Try resetting the verdict or risk filters to view more records.</p>
-          <button className="btn-secondary" onClick={() => { setDecisionFilter('ALL'); setRiskFilter('ALL'); setSearchQuery(''); }}>
-            Reset Filters
-          </button>
-        </div>
-      ) : (
-        <div className="decisions-stack">
-          {filteredEvents.map((ev) => {
-            const dec = decisionsMap[ev.eventId];
-            const decision = dec?.decision || (ev.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
-            const riskLevel = dec?.riskLevel || (ev.dataSensitivity === 'CRITICAL' ? 'CRITICAL' : 'LOW');
-            const trustScore = dec?.trustScore ?? 95;
-            const signals = dec?.securitySignals || {};
-            const reasons = dec?.reasons || [];
-
-            return (
-              <div
-                key={ev.eventId}
-                className={`decision-feed-item decision-border-${decision.toLowerCase()}`}
-              >
-                <div className="decision-item-header">
-                  <div className="decision-item-left">
-                    <DecisionBadge decision={decision} size="large" />
-                    <RiskBadge riskLevel={riskLevel} size="large" />
-                    <span className="decision-event-id"><code>{ev.eventId}</code></span>
-                    <span className="decision-timestamp">
-                      {new Date(ev.timestamp || Date.now()).toLocaleTimeString()}
+                  {/* Summary row */}
+                  <div className="mt-2 text-xs text-slate-700 flex items-center gap-4 flex-wrap">
+                    <span>
+                      Agent: <strong className="text-indigo">{evt.agentId || 'agent_001'}</strong>
+                    </span>
+                    <span>
+                      Action: <strong>{evt.action}</strong>
+                    </span>
+                    <span>
+                      Tool: <strong>{evt.tool}</strong>
+                    </span>
+                    <span>
+                      Target: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">{evt.resource}</code>
                     </span>
                   </div>
 
-                  <div className="decision-item-right">
-                    <button
-                      className="btn-inspect-decision"
-                      onClick={() => setInvestigatingEvent(ev)}
-                    >
-                      <Eye size={14} />
-                      <span>Investigate Forensic Trace</span>
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="decision-item-grid">
-                  {/* Action & Resource Context */}
-                  <div className="decision-context-block">
-                    <span className="context-label">Observed Telemetry</span>
-                    <div className="context-value">
-                      <strong>{ev.action}</strong>
-                      <span className="resource-sub">Resource: <code>{ev.resource}</code></span>
-                      <span className="tool-sub">Tool: <code>{ev.tool}</code></span>
+                  {/* Rationale Snippet */}
+                  {dec?.reasons && dec.reasons.length > 0 && (
+                    <div className="mt-2 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border-l-3 border-indigo-500 font-medium">
+                      <strong>Arbitration Rationale:</strong> {dec.reasons[0]}
                     </div>
-                  </div>
+                  )}
 
-                  {/* 3.1 Policy & 3.2 Provenance Highlights */}
-                  <div className="decision-signals-block">
-                    <span className="context-label">Engine Signals</span>
-                    <div className="signals-chips-wrap">
-                      <span className={`signal-chip ${signals.policyViolation ? 'chip-violation' : 'chip-ok'}`}>
-                        Policy: {signals.policyViolation ? 'VIOLATION' : 'AUTHORIZED'}
-                      </span>
-                      <span className={`signal-chip ${signals.intentDrift ? 'chip-violation' : 'chip-ok'}`}>
-                        Intent: {dec?.intent?.status || 'ALIGNED'}
-                      </span>
-                      <span className={`signal-chip provenance-chip-${ev.provenance?.trustLevel?.toLowerCase()}`}>
-                        Provenance: {ev.provenance?.trustLevel}
-                      </span>
+                  {/* Expanded Breakdown */}
+                  {isExpanded && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <PolicyResultCard
+                          requiredPermission={
+                            dec?.policy?.requiredPermission || evt.authorization?.requiredPermission
+                          }
+                          registeredPermissions={
+                            agent?.permissions || dec?.policy?.registeredPermissions || []
+                          }
+                          reportedAuthStatus={
+                            dec?.policy?.reportedAuthStatus || evt.authorization?.status
+                          }
+                          reportedGrantedPermissions={
+                            dec?.policy?.reportedGrantedPermissions ||
+                            evt.authorization?.grantedPermissions ||
+                            []
+                          }
+                          policyViolation={
+                            dec?.securitySignals?.policyViolation || dec?.policy?.violation || false
+                          }
+                          reason={dec?.reasons?.find((r) => r.toLowerCase().includes('policy'))}
+                        />
+
+                        <ProvenanceResultCard
+                          sourceType={dec?.provenance?.sourceType || evt.provenance?.sourceType}
+                          sourceId={dec?.provenance?.sourceId || evt.provenance?.sourceId}
+                          trustLevel={dec?.provenance?.trustLevel || evt.provenance?.trustLevel}
+                          provenanceRisk={dec?.provenance?.risk || (evt.provenance?.trustLevel === 'UNTRUSTED' ? 'HIGH' : 'LOW')}
+                          reason={dec?.reasons?.find((r) => r.toLowerCase().includes('provenance') || r.toLowerCase().includes('untrusted'))}
+                        />
+
+                        <IntentResultCard
+                          originalIntent={
+                            agent?.declaredObjective || 'Analyze quarterly financial telemetry'
+                          }
+                          action={evt.action}
+                          resource={evt.resource}
+                          status={dec?.intent?.status || 'ALIGNED'}
+                          alignmentScore={dec?.intent?.alignmentScore ?? 1.0}
+                          intentDrift={dec?.intent?.status === 'DRIFT'}
+                          reason={dec?.reasons?.find((r) => r.toLowerCase().includes('intent') || r.toLowerCase().includes('drift'))}
+                        />
+                      </div>
                     </div>
-                  </div>
-
-                  {/* 3.5 Dynamic Trust Outcome */}
-                  <div className="decision-trust-block">
-                    <span className="context-label">Dynamic Trust</span>
-                    <TrustScoreMeter score={trustScore} size="compact" />
-                  </div>
+                  )}
                 </div>
-
-                {/* Explainable Reasons Callout */}
-                {reasons && reasons.length > 0 && (
-                  <div className="decision-reasons-inline">
-                    <Layers size={13} className="text-muted" />
-                    <span className="reasons-label">Authoritative Findings:</span>
-                    <span className="reasons-text">{reasons.join(' • ')}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Deep Investigation Modal */}
-      {investigatingEvent && (
-        <InvestigationModal
-          event={investigatingEvent}
-          agent={agents[investigatingEvent.agentId]}
-          session={{ originalIntent: agents[investigatingEvent.agentId]?.declaredObjective }}
-          isOpen={Boolean(investigatingEvent)}
-          onClose={() => setInvestigatingEvent(null)}
-        />
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

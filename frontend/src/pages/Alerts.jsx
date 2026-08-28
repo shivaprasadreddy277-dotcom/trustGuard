@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
-  ShieldAlert,
-  AlertTriangle,
   RefreshCw,
   Search,
+  Filter,
+  Eye,
+  AlertTriangle,
+  ShieldAlert,
   CheckCircle2,
-  Clock,
-  Users,
-  Link as LinkIcon,
-  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { alertsApi } from '../api/client';
 import RiskBadge from '../components/security/RiskBadge';
@@ -17,161 +16,108 @@ import AttackChainDetailModal from '../components/security/AttackChainDetailModa
 
 const Alerts = () => {
   const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [severityFilter, setSeverityFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'UNRESOLVED' | 'RESOLVED'
+
+  // Attack Chain Detail Modal
   const [selectedChainId, setSelectedChainId] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isChainModalOpen, setIsChainModalOpen] = useState(false);
 
   const fetchAlerts = useCallback(async () => {
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
     try {
-      const data = await alertsApi.listAlerts();
-      setAlerts(data.alerts || []);
+      const res = await alertsApi.listAlerts({
+        resolved: statusFilter === 'RESOLVED' ? true : statusFilter === 'UNRESOLVED' ? false : undefined,
+        limit: 50,
+      });
+      setAlerts(res.alerts || []);
     } catch (err) {
-      setError(err.message || 'Failed to retrieve security alerts.');
+      setError(err.message || 'Failed to load security alerts.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
 
+  const handleOpenChain = (chainId) => {
+    if (!chainId) return;
+    setSelectedChainId(chainId);
+    setIsChainModalOpen(true);
+  };
+
   const filteredAlerts = alerts.filter((al) => {
-    const matchesSearch =
-      al.alertId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      al.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      al.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      al.agentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      al.chainId?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesSeverity =
-      severityFilter === 'ALL' || al.severity === severityFilter;
-
-    const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'RESOLVED' && al.resolved) ||
-      (statusFilter === 'UNRESOLVED' && !al.resolved);
-
-    return matchesSearch && matchesSeverity && matchesStatus;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      al.alertId?.toLowerCase().includes(q) ||
+      al.title?.toLowerCase().includes(q) ||
+      al.description?.toLowerCase().includes(q) ||
+      al.severity?.toLowerCase().includes(q)
+    );
   });
 
-  const criticalCount = alerts.filter((a) => a.severity === 'CRITICAL').length;
-  const highCount = alerts.filter((a) => a.severity === 'HIGH').length;
-  const openCount = alerts.filter((a) => !a.resolved).length;
-
   return (
-    <div className="page-container alerts-page">
+    <div className="page-container">
       {/* Header */}
-      <div className="page-header">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <div className="title-row">
-            <Bell className="header-icon text-warning" size={28} />
-            <h1>Security Threat Alerts</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-bold text-coral bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+              INCIDENT QUEUE
+            </span>
+            <span className="text-xs text-muted">// High Priority Anomaly Triage</span>
           </div>
-          <p className="page-subtitle">
-            Real-time security notifications triggered by correlated multi-event threats.
+          <h1 className="font-display text-2xl font-bold text-slate-900">
+            Security Incident Alerts
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Multi-engine anomaly alarms, critical policy violation notifications, and correlated attack chain incidents.
           </p>
         </div>
+
         <button
           type="button"
-          className="btn btn-secondary"
+          className="btn btn-secondary btn-sm"
           onClick={fetchAlerts}
-          disabled={loading}
+          disabled={isLoading}
         >
-          <RefreshCw size={16} className={loading ? 'spinner' : ''} />
+          <RefreshCw size={14} className={isLoading ? 'spinner' : ''} />
           <span>Refresh Alerts</span>
         </button>
       </div>
 
-      {/* Metrics Bar */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-title">Open Alerts</span>
-            <Bell className="stat-icon text-warning" size={20} />
-          </div>
-          <div className="stat-value">{openCount}</div>
-          <div className="stat-desc">Requiring analyst review</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-title">Critical Alerts</span>
-            <ShieldAlert className="stat-icon text-critical" size={20} />
-          </div>
-          <div className="stat-value text-critical">{criticalCount}</div>
-          <div className="stat-desc">Immediate action required</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-title">High Alerts</span>
-            <AlertTriangle className="stat-icon text-warning" size={20} />
-          </div>
-          <div className="stat-value text-warning">{highCount}</div>
-          <div className="stat-desc">Elevated risk anomalies</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-title">Total Active</span>
-            <CheckCircle2 className="stat-icon text-success" size={20} />
-          </div>
-          <div className="stat-value">{alerts.length}</div>
-          <div className="stat-desc">Alert records in database</div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="filter-bar">
-        <div className="search-box">
-          <Search size={16} className="search-icon" />
+      {/* Filter & Search Bar */}
+      <div className="chains-filter-bar">
+        <div className="filter-search-box">
+          <Search size={16} className="text-muted" />
           <input
             type="text"
-            placeholder="Search alerts by ID, agent, title, or message..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by alert ID, title, description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="filter-group">
-          {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((sev) => (
-            <button
-              key={sev}
-              type="button"
-              className={`btn-filter ${severityFilter === sev ? 'active' : ''}`}
-              onClick={() => setSeverityFilter(sev)}
-            >
-              {sev}
-            </button>
-          ))}
-        </div>
-
-        <div className="filter-group ml-2">
-          {[
-            { id: 'ALL', label: 'All Statuses' },
-            { id: 'UNRESOLVED', label: 'Open' },
-            { id: 'RESOLVED', label: 'Resolved' },
-          ].map((st) => (
-            <button
-              key={st.id}
-              type="button"
-              className={`btn-filter ${statusFilter === st.id ? 'active' : ''}`}
-              onClick={() => setStatusFilter(st.id)}
-            >
-              {st.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <Filter size={15} className="text-muted" />
+          <select
+            className="filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">All Alerts</option>
+            <option value="UNRESOLVED">Unresolved Only</option>
+            <option value="RESOLVED">Resolved Only</option>
+          </select>
         </div>
       </div>
 
-      {/* Content Area */}
       {error && (
         <div className="error-banner">
           <AlertTriangle size={18} />
@@ -179,92 +125,94 @@ const Alerts = () => {
         </div>
       )}
 
-      {loading && (
-        <div className="loading-state">
-          <RefreshCw className="spinner" size={28} />
-          <p>Loading authoritative threat alerts from PostgreSQL...</p>
+      {/* Alerts Grid / List */}
+      <div className="editorial-card">
+        <div className="card-editorial-head">
+          <h3>
+            <Bell size={18} className="text-coral" />
+            <span>Incident Queue ({filteredAlerts.length})</span>
+          </h3>
         </div>
-      )}
 
-      {!loading && !error && filteredAlerts.length === 0 && (
-        <div className="empty-state-card">
-          <CheckCircle2 size={48} className="text-success" />
-          <h3>NO ACTIVE SECURITY ALERTS</h3>
-          <p>All monitored agents and execution sessions are operating within expected baselines.</p>
-        </div>
-      )}
-
-      {!loading && !error && filteredAlerts.length > 0 && (
-        <div className="alerts-list-grid">
-          {filteredAlerts.map((al) => {
-            const timeStr = al.timestamp
-              ? new Date(al.timestamp).toLocaleString()
-              : 'Recently';
-
-            return (
-              <div key={al.alertId} className="alert-card-item">
-                <div className="alert-card-top">
-                  <div className="alert-id-wrap">
-                    <span className="alert-tag">ALERT</span>
-                    <span className="alert-id-text">{al.alertId}</span>
-                    <span className="alert-type-badge">{al.type}</span>
-                  </div>
-                  <div className="alert-badges">
-                    <RiskBadge risk={al.severity} />
-                    <span
-                      className={`status-pill-badge ${al.resolved ? 'status-resolved' : 'status-open'}`}
-                    >
-                      {al.resolved ? 'RESOLVED' : 'UNRESOLVED'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="alert-body">
-                  <h3 className="alert-title">{al.title || 'Security Incident Detected'}</h3>
-                  <p className="alert-message">{al.message}</p>
-                </div>
-
-                <div className="alert-footer">
-                  <div className="alert-meta-items">
-                    <span>
-                      <Users size={13} /> Agent: <strong>{al.agentId}</strong>
-                    </span>
-                    {al.chainId && (
-                      <span>
-                        <LinkIcon size={13} /> Chain: <strong>{al.chainId}</strong>
+        {isLoading ? (
+          <div className="loading-state">
+            <RefreshCw className="spinner" size={20} />
+            <span>Loading security alerts from PostgreSQL...</span>
+          </div>
+        ) : filteredAlerts.length === 0 ? (
+          <div className="empty-state-card">
+            <CheckCircle2 size={36} className="text-emerald-600 mx-auto" />
+            <p>No unresolved security alerts. All agent activities are within normal policy parameters.</p>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table-dark">
+              <thead>
+                <tr>
+                  <th>Alert ID</th>
+                  <th>Severity</th>
+                  <th>Incident Type</th>
+                  <th>Summary & Description</th>
+                  <th>Attack Chain</th>
+                  <th>Status</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAlerts.map((al) => (
+                  <tr key={al.alertId}>
+                    <td className="mono-val font-semibold text-indigo">{al.alertId}</td>
+                    <td>
+                      <RiskBadge risk={al.severity || 'HIGH'} />
+                    </td>
+                    <td>
+                      <span className="font-bold text-xs text-slate-800">{al.type}</span>
+                    </td>
+                    <td>
+                      <div>
+                        <div className="font-bold text-xs text-slate-900">{al.title}</div>
+                        <div className="text-xs text-slate-600 mt-0.5">{al.description}</div>
+                      </div>
+                    </td>
+                    <td>
+                      {al.chainId ? (
+                        <button
+                          type="button"
+                          className="btn-link text-xs font-extrabold text-coral"
+                          onClick={() => handleOpenChain(al.chainId)}
+                        >
+                          {al.chainId} →
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">None</span>
+                      )}
+                    </td>
+                    <td>
+                      <span
+                        className={`status-pill-badge ${
+                          al.status === 'RESOLVED' ? 'status-resolved' : 'status-unresolved'
+                        }`}
+                      >
+                        ● {al.status}
                       </span>
-                    )}
-                    <span>
-                      <Clock size={13} /> {timeStr}
-                    </span>
-                  </div>
+                    </td>
+                    <td className="text-xs text-slate-500">
+                      {new Date(al.createdAt || Date.now()).toLocaleTimeString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-                  {al.chainId && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => {
-                        setSelectedChainId(al.chainId);
-                        setIsModalOpen(true);
-                      }}
-                    >
-                      <span>Investigate Chain</span>
-                      <ChevronRight size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Forensic Detail Modal */}
+      {/* Attack Chain Modal */}
       <AttackChainDetailModal
-        isOpen={isModalOpen}
+        isOpen={isChainModalOpen}
         chainId={selectedChainId}
         onClose={() => {
-          setIsModalOpen(false);
+          setIsChainModalOpen(false);
           setSelectedChainId(null);
         }}
       />

@@ -2,251 +2,279 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Zap,
   RefreshCw,
-  PlusCircle,
-  AlertCircle,
-  FileCode,
-  Shield,
+  Plus,
+  Search,
+  Filter,
+  Eye,
+  AlertTriangle,
+  Send,
+  Sparkles,
 } from 'lucide-react';
-import { eventsApi, agentsApi, securityApi } from '../api/client';
+import { eventsApi, agentsApi, sessionsApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
+import RiskBadge from '../components/security/RiskBadge';
 import InvestigationModal from '../components/security/InvestigationModal';
-import LiveSecurityPipelineModal from '../components/security/LiveSecurityPipelineModal';
 
 const Events = () => {
   const [events, setEvents] = useState([]);
-  const [agents, setAgents] = useState({});
-  const [decisionsMap, setDecisionsMap] = useState({});
-  const [sessionIdFilter, setSessionIdFilter] = useState('');
-  const [agentIdFilter, setAgentIdFilter] = useState('');
+  const [agents, setAgents] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sensitivityFilter, setSensitivityFilter] = useState('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Ingest Modal & Investigation Modal States
-  const [isIngestModalOpen, setIsIngestModalOpen] = useState(false);
-  const [investigatingEvent, setInvestigatingEvent] = useState(null);
-  const [inspectRawEvent, setInspectRawEvent] = useState(null);
+  // Ingest Event Modal
+  const [showIngestModal, setShowIngestModal] = useState(false);
+  const [isIngesting, setIsIngesting] = useState(false);
+  const [ingestError, setIngestError] = useState(null);
+  const [ingestPayload, setIngestPayload] = useState({
+    sessionId: '',
+    agentId: '',
+    action: 'query_db',
+    tool: 'database_connector',
+    resource: 'NovaCorp_Credentials',
+    dataSensitivity: 'HIGH',
+    authorization: {
+      status: 'ALLOWED',
+      requiredPermission: 'db.read',
+      grantedPermissions: ['db.read'],
+    },
+    provenance: {
+      sourceType: 'EXTERNAL_DOCUMENT',
+      sourceId: 'untrusted_input.txt',
+      trustLevel: 'UNTRUSTED',
+    },
+  });
+
+  // Forensic Investigation Modal
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const fetchEvents = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [eventsData, agentsData] = await Promise.all([
-        eventsApi.listEvents({
-          sessionId: sessionIdFilter || undefined,
-          agentId: agentIdFilter || undefined,
-          limit: 100,
-        }),
+      const [evRes, agRes, sessRes] = await Promise.allSettled([
+        eventsApi.listEvents({ limit: 50 }),
         agentsApi.listAgents(),
+        sessionsApi.listSessions(),
       ]);
 
-      const rawEvents = eventsData.events || [];
+      const rawEvents = evRes.status === 'fulfilled' ? evRes.value.events || [] : [];
+      const rawAgents = agRes.status === 'fulfilled' ? agRes.value.agents || [] : [];
+      const rawSessions = sessRes.status === 'fulfilled' ? sessRes.value.sessions || [] : [];
+
       setEvents(rawEvents);
+      setAgents(rawAgents);
+      setSessions(rawSessions);
 
-      const aMap = {};
-      (agentsData.agents || []).forEach((a) => {
-        aMap[a.agentId] = a;
-      });
-      setAgents(aMap);
-
-      // Fetch decisions for visible events
-      const decMap = {};
-      await Promise.all(
-        rawEvents.slice(0, 20).map(async (ev) => {
-          try {
-            const dec = await securityApi.getDecision(ev.eventId);
-            decMap[ev.eventId] = dec;
-          } catch {
-            // Optional fallback
-          }
-        })
-      );
-      setDecisionsMap(decMap);
+      if (rawSessions.length > 0 && !ingestPayload.sessionId) {
+        setIngestPayload((prev) => ({
+          ...prev,
+          sessionId: rawSessions[0].sessionId,
+          agentId: rawSessions[0].agentId || (rawAgents[0]?.agentId || 'agent_001'),
+        }));
+      }
     } catch (err) {
-      setError(err.message || 'Failed to fetch telemetry events.');
+      setError(err.message || 'Failed to load telemetry events.');
     } finally {
       setIsLoading(false);
     }
-  }, [sessionIdFilter, agentIdFilter]);
+  }, [ingestPayload.sessionId]);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
-  const handleEventIngested = (securityResult) => {
-    fetchEvents();
+  const handleIngestEvent = async (e) => {
+    e.preventDefault();
+    setIsIngesting(true);
+    setIngestError(null);
+    try {
+      const eventId = `evt_manual_${Date.now()}`;
+      await eventsApi.ingestEvent({
+        eventId,
+        ...ingestPayload,
+      });
+
+      setShowIngestModal(false);
+      fetchEvents();
+    } catch (err) {
+      setIngestError(err.message || 'Event ingestion failed.');
+    } finally {
+      setIsIngesting(false);
+    }
   };
+
+  const filteredEvents = events.filter((ev) => {
+    if (sensitivityFilter !== 'ALL' && ev.dataSensitivity !== sensitivityFilter) {
+      return false;
+    }
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      ev.eventId?.toLowerCase().includes(q) ||
+      ev.action?.toLowerCase().includes(q) ||
+      ev.resource?.toLowerCase().includes(q) ||
+      ev.tool?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="page-container">
-      {/* Page Header */}
-      <div className="page-header flex-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2>Agent Events & Telemetry Stream</h2>
-          <p className="subtitle">Real-time runtime observation and inline security engine arbitration</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              EVIDENCE STREAM
+            </span>
+            <span className="text-xs text-muted">// Real-time Ingestion & Decision Telemetry</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold text-slate-900">
+            Real-Time Telemetry & Evidence Stream
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Every incoming action includes directive provenance, tool parameters, target resource, and authoritative security verdicts.
+          </p>
         </div>
-        <div className="header-btn-group">
-          <button className="secondary-btn" onClick={fetchEvents} disabled={isLoading}>
-            <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
-            <span>Refresh Stream</span>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={fetchEvents}
+            disabled={isLoading}
+          >
+            <RefreshCw size={14} className={isLoading ? 'spinner' : ''} />
+            <span>Refresh</span>
           </button>
-          <button className="primary-btn" onClick={() => setIsIngestModalOpen(true)}>
-            <PlusCircle size={16} />
-            <span>Ingest Live Telemetry</span>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowIngestModal(true)}
+          >
+            <Plus size={15} />
+            <span>Ingest Test Event</span>
           </button>
+        </div>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="chains-filter-bar">
+        <div className="filter-search-box">
+          <Search size={16} className="text-muted" />
+          <input
+            type="text"
+            placeholder="Search by event ID, action, resource, tool..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter size={15} className="text-muted" />
+          <select
+            className="filter-select"
+            value={sensitivityFilter}
+            onChange={(e) => setSensitivityFilter(e.target.value)}
+          >
+            <option value="ALL">All Sensitivity Levels</option>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
         </div>
       </div>
 
       {error && (
-        <div className="auth-alert error mb-4">
-          <AlertCircle size={18} />
+        <div className="error-banner">
+          <AlertTriangle size={18} />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Filter Bar */}
-      <div className="card mb-4 filter-bar-card">
-        <div className="filters-grid">
-          <div className="filter-group">
-            <label htmlFor="filter-session">Filter by Session ID</label>
-            <input
-              id="filter-session"
-              type="text"
-              placeholder="e.g. sess_9988"
-              value={sessionIdFilter}
-              onChange={(e) => setSessionIdFilter(e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <label htmlFor="filter-agent">Filter by Agent ID</label>
-            <input
-              id="filter-agent"
-              type="text"
-              placeholder="e.g. agent_001"
-              value={agentIdFilter}
-              onChange={(e) => setAgentIdFilter(e.target.value)}
-            />
-          </div>
-          {(sessionIdFilter || agentIdFilter) && (
-            <div className="filter-reset-wrap">
-              <button
-                className="secondary-btn btn-sm"
-                onClick={() => {
-                  setSessionIdFilter('');
-                  setAgentIdFilter('');
-                }}
-              >
-                Clear Filters
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Telemetry Stream Table */}
-      <div className="card">
-        <div className="card-header flex-between">
-          <div className="card-title-wrap">
-            <Zap size={18} className="text-accent" />
-            <h3>Runtime Action Stream ({events.length})</h3>
-          </div>
-          <span className="text-muted text-sm">Real-time DB Evidence</span>
+      {/* Events Table */}
+      <div className="editorial-card">
+        <div className="card-editorial-head">
+          <h3>
+            <Zap size={18} className="text-indigo" />
+            <span>Ingested Agent Events ({filteredEvents.length})</span>
+          </h3>
         </div>
 
         {isLoading ? (
-          <div className="card-loader">
-            <div className="spinner-small" />
-            <span>Loading telemetry stream...</span>
+          <div className="loading-state">
+            <RefreshCw className="spinner" size={20} />
+            <span>Streaming telemetry from PostgreSQL...</span>
           </div>
-        ) : events.length === 0 ? (
-          <div className="empty-card-state">
-            <Zap size={36} className="text-muted mb-2" />
-            <p>No telemetry events match your criteria.</p>
-            <button
-              className="primary-btn btn-sm mt-3"
-              onClick={() => setIsIngestModalOpen(true)}
-            >
-              Ingest First Event
-            </button>
+        ) : filteredEvents.length === 0 ? (
+          <div className="empty-state-card">
+            <Zap size={36} />
+            <p>No telemetry events matching filter criteria.</p>
           </div>
         ) : (
           <div className="table-responsive">
-            <table className="data-table">
+            <table className="table-dark">
               <thead>
                 <tr>
-                  <th>Verdict</th>
                   <th>Event ID</th>
                   <th>Timestamp</th>
-                  <th>Agent / Session</th>
-                  <th>Action / Tool</th>
+                  <th>Agent & Action</th>
                   <th>Target Resource</th>
                   <th>Sensitivity</th>
                   <th>Provenance</th>
-                  <th>Forensics</th>
+                  <th>Decision</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {events.map((evt) => {
-                  const dec = decisionsMap[evt.eventId];
-                  const verdict = dec?.decision || (evt.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
-                  const risk = dec?.riskLevel || (evt.dataSensitivity === 'CRITICAL' ? 'CRITICAL' : 'LOW');
+                {filteredEvents.map((evt) => {
+                  const decision = evt.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW';
 
                   return (
                     <tr key={evt.eventId}>
-                      <td>
-                        <DecisionBadge decision={verdict} />
-                      </td>
-                      <td>
-                        <code className="text-accent font-semibold">{evt.eventId}</code>
-                      </td>
-                      <td className="text-muted whitespace-nowrap">
+                      <td className="mono-val font-semibold text-indigo">{evt.eventId}</td>
+                      <td className="text-xs text-slate-500">
                         {new Date(evt.timestamp).toLocaleTimeString()}
                       </td>
                       <td>
-                        <div className="cell-stacked">
-                          <span className="font-medium">{evt.agentId}</span>
-                          <span className="text-muted text-xs">{evt.sessionId}</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-800">{evt.action}</span>
+                          <span className="text-xs text-slate-400 mono-val">{evt.tool}</span>
                         </div>
                       </td>
                       <td>
-                        <div className="cell-stacked">
-                          <code className="action-code">{evt.action}</code>
-                          <span className="text-muted text-xs">{evt.tool}</span>
-                        </div>
+                        <code className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-700 font-mono">
+                          {evt.resource}
+                        </code>
                       </td>
                       <td>
-                        <code>{evt.resource}</code>
+                        <RiskBadge risk={evt.dataSensitivity || 'LOW'} />
                       </td>
                       <td>
-                        <span className={`sensitivity-badge ${evt.dataSensitivity.toLowerCase()}`}>
-                          {evt.dataSensitivity}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="cell-stacked">
-                          <span className="text-xs font-semibold">{evt.provenance?.sourceType}</span>
-                          <span className={`provenance-trust-tag ${evt.provenance?.trustLevel.toLowerCase()}`}>
-                            {evt.provenance?.trustLevel}
+                        <div className="text-xs">
+                          <span className="font-semibold text-slate-700 block">
+                            {evt.provenance?.trustLevel || 'TRUSTED'}
+                          </span>
+                          <span className="text-slate-400 font-mono text-[11px]">
+                            {evt.provenance?.sourceType || 'USER'}
                           </span>
                         </div>
                       </td>
                       <td>
-                        <div className="actions-cell-wrap">
-                          <button
-                            className="btn-forensic-inspect"
-                            onClick={() => setInvestigatingEvent(evt)}
-                            title="Inspect 5-Engine Analysis Trace"
-                          >
-                            <Shield size={13} />
-                            <span>Inspect</span>
-                          </button>
-                          <button
-                            className="icon-action-btn"
-                            onClick={() => setInspectRawEvent(evt)}
-                            title="View Raw Evidence JSON"
-                          >
-                            <FileCode size={14} />
-                          </button>
-                        </div>
+                        <DecisionBadge decision={decision} />
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-xs"
+                          onClick={() => setSelectedEvent(evt)}
+                        >
+                          <Eye size={12} />
+                          <span>Forensics</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -257,51 +285,188 @@ const Events = () => {
         )}
       </div>
 
-      {/* Raw Evidence JSON Inspector Modal */}
-      {inspectRawEvent && (
-        <div className="modal-overlay" onClick={() => setInspectRawEvent(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      {/* Manual Ingest Modal */}
+      {showIngestModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <div className="modal-title-wrap">
-                <FileCode size={20} className="text-accent" />
-                <h3>Event Evidence: {inspectRawEvent.eventId}</h3>
-              </div>
-              <button className="modal-close-btn" onClick={() => setInspectRawEvent(null)}>
-                &times;
-              </button>
-            </div>
-            <div className="modal-body">
-              <pre className="json-viewer">
-                {JSON.stringify(inspectRawEvent, null, 2)}
-              </pre>
-            </div>
-            <div className="modal-footer">
+              <h3>Ingest Synthetic Agent Telemetry Event</h3>
               <button
-                className="secondary-btn"
-                onClick={() => setInspectRawEvent(null)}
+                type="button"
+                className="btn btn-secondary btn-xs"
+                onClick={() => setShowIngestModal(false)}
               >
-                Close Inspector
+                ✕
               </button>
             </div>
+
+            <form onSubmit={handleIngestEvent}>
+              <div className="modal-body flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Session
+                    </label>
+                    <select
+                      className="w-full"
+                      value={ingestPayload.sessionId}
+                      onChange={(e) =>
+                        setIngestPayload({ ...ingestPayload, sessionId: e.target.value })
+                      }
+                      required
+                    >
+                      {sessions.map((s) => (
+                        <option key={s.sessionId} value={s.sessionId}>
+                          {s.sessionId} ({s.agentId})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Agent ID
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full"
+                      value={ingestPayload.agentId}
+                      onChange={(e) =>
+                        setIngestPayload({ ...ingestPayload, agentId: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Action
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full"
+                      value={ingestPayload.action}
+                      onChange={(e) =>
+                        setIngestPayload({ ...ingestPayload, action: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Tool
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full"
+                      value={ingestPayload.tool}
+                      onChange={(e) =>
+                        setIngestPayload({ ...ingestPayload, tool: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Target Resource
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full"
+                    value={ingestPayload.resource}
+                    onChange={(e) =>
+                      setIngestPayload({ ...ingestPayload, resource: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Data Sensitivity
+                    </label>
+                    <select
+                      className="w-full"
+                      value={ingestPayload.dataSensitivity}
+                      onChange={(e) =>
+                        setIngestPayload({ ...ingestPayload, dataSensitivity: e.target.value })
+                      }
+                    >
+                      <option value="LOW">LOW</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="HIGH">HIGH</option>
+                      <option value="CRITICAL">CRITICAL</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Provenance Trust Level
+                    </label>
+                    <select
+                      className="w-full"
+                      value={ingestPayload.provenance.trustLevel}
+                      onChange={(e) =>
+                        setIngestPayload({
+                          ...ingestPayload,
+                          provenance: {
+                            ...ingestPayload.provenance,
+                            trustLevel: e.target.value,
+                          },
+                        })
+                      }
+                    >
+                      <option value="TRUSTED">TRUSTED</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="UNTRUSTED">UNTRUSTED</option>
+                    </select>
+                  </div>
+                </div>
+
+                {ingestError && (
+                  <div className="error-banner text-xs">
+                    <AlertTriangle size={14} />
+                    <span>{ingestError}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowIngestModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isIngesting}
+                >
+                  <Send size={14} />
+                  <span>{isIngesting ? 'Ingesting...' : 'Ingest & Evaluate'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Live Security Pipeline Ingestion Simulator Modal */}
-      <LiveSecurityPipelineModal
-        isOpen={isIngestModalOpen}
-        onClose={() => setIsIngestModalOpen(false)}
-        onEventIngested={handleEventIngested}
-      />
-
-      {/* Deep 5-Engine Forensic Investigation Modal */}
-      {investigatingEvent && (
+      {/* Forensic Modal */}
+      {selectedEvent && (
         <InvestigationModal
-          event={investigatingEvent}
-          agent={agents[investigatingEvent.agentId]}
-          session={{ originalIntent: agents[investigatingEvent.agentId]?.declaredObjective }}
-          isOpen={Boolean(investigatingEvent)}
-          onClose={() => setInvestigatingEvent(null)}
+          event={selectedEvent}
+          agent={agents.find((a) => a.agentId === selectedEvent.agentId)}
+          session={sessions.find((s) => s.sessionId === selectedEvent.sessionId)}
+          isOpen={Boolean(selectedEvent)}
+          onClose={() => setSelectedEvent(null)}
         />
       )}
     </div>

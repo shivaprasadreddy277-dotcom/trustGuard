@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield,
@@ -6,19 +6,22 @@ import {
   Zap,
   CheckCircle2,
   AlertTriangle,
-  ArrowUpRight,
+  ArrowRight,
   RefreshCw,
   ShieldAlert,
-  Flame,
+  Layers,
   Key,
   Compass,
   GitBranch,
   Eye,
+  Activity,
+  Flame,
+  PlaySquare,
+  Sparkles,
 } from 'lucide-react';
-import { agentsApi, eventsApi, securityApi } from '../api/client';
+import { agentsApi, eventsApi, securityApi, attackChainsApi, alertsApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
 import RiskBadge from '../components/security/RiskBadge';
-import TrustScoreMeter from '../components/security/TrustScoreMeter';
 import InvestigationModal from '../components/security/InvestigationModal';
 
 const Overview = () => {
@@ -27,26 +30,34 @@ const Overview = () => {
   const [agents, setAgents] = useState([]);
   const [events, setEvents] = useState([]);
   const [decisionsMap, setDecisionsMap] = useState({});
+  const [attackChains, setAttackChains] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Investigation Modal
+  // Forensic Investigation Modal
   const [investigatingEvent, setInvestigatingEvent] = useState(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [agentsRes, eventsRes] = await Promise.allSettled([
+      const [agentsRes, eventsRes, chainsRes, alertsRes] = await Promise.allSettled([
         agentsApi.listAgents(),
-        eventsApi.listEvents({ limit: 20 }),
+        eventsApi.listEvents({ limit: 15 }),
+        attackChainsApi.listChains(),
+        alertsApi.listAlerts({ limit: 10 }),
       ]);
 
       const rawAgents = agentsRes.status === 'fulfilled' ? agentsRes.value.agents || [] : [];
       const rawEvents = eventsRes.status === 'fulfilled' ? eventsRes.value.events || [] : [];
+      const rawChains = chainsRes.status === 'fulfilled' ? chainsRes.value.attackChains || chainsRes.value.chains || [] : [];
+      const rawAlerts = alertsRes.status === 'fulfilled' ? alertsRes.value.alerts || [] : [];
 
       setAgents(rawAgents);
       setEvents(rawEvents);
+      setAttackChains(rawChains);
+      setAlerts(rawAlerts);
 
       // Fetch security decisions for recent events
       const decMap = {};
@@ -56,209 +67,240 @@ const Overview = () => {
             const dec = await securityApi.getDecision(ev.eventId);
             decMap[ev.eventId] = dec;
           } catch {
-            // Optional legacy fallback
+            // Optional decision fallback
           }
         })
       );
       setDecisionsMap(decMap);
     } catch (err) {
-      setError(err.message || 'Failed to load security overview.');
+      setError(err.message || 'Failed to load security operations overview.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
   const activeAgentsCount = agents.filter((a) => a.status === 'ACTIVE').length;
-  const suspendedAgentsCount = agents.filter((a) => a.status === 'SUSPENDED').length;
   const avgTrustScore =
     agents.length > 0
       ? Math.round(agents.reduce((acc, a) => acc + (a.currentTrustScore || 0), 0) / agents.length)
       : 100;
 
-  const blockCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'BLOCK').length;
-  const reviewCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'REVIEW').length;
-  const allowCount = events.filter((e) => decisionsMap[e.eventId]?.decision === 'ALLOW').length;
-
   return (
     <div className="page-container">
-      {/* Page Header */}
-      <div className="page-header flex-between">
-        <div>
-          <h2>Security Operations Center</h2>
-          <p className="subtitle">Real-time AI continuous security arbitration, trust reputation, and threat prevention</p>
+      {/* Editorial Large Hero Header */}
+      <div className="editorial-hero">
+        <div className="hero-left-editorial">
+          <div className="hero-doodle-tag">
+            <Sparkles size={13} />
+            <span>AI BEHAVIORAL SECURITY // CONTINUOUS ARBITRATION</span>
+          </div>
+
+          <h1 className="hero-display-headline">
+            YOUR AI FLEET IS <br />
+            <span className="highlight-word">UNDER CONTROL</span>.
+          </h1>
+
+          <p className="hero-editorial-desc">
+            TrustGuard continuously monitors agent directives, flags semantic intent drift,
+            and detects multi-stage compound attack trajectories before damage occurs.
+          </p>
+
+          <div className="hero-stats-cloud">
+            <div className="hero-stat-pill">
+              <span className="h-val">{agents.length}</span>
+              <span className="h-lbl">Monitored Agents ({activeAgentsCount} Active)</span>
+            </div>
+
+            <div className="hero-stat-pill">
+              <span className="h-val text-coral">{attackChains.length}</span>
+              <span className="h-lbl">Attack Chains</span>
+            </div>
+
+            <div className="hero-stat-pill">
+              <span className="h-val text-warning">{alerts.length}</span>
+              <span className="h-lbl">Open Alerts</span>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary ml-2"
+              onClick={() => navigate('/simulations')}
+            >
+              <PlaySquare size={15} />
+              <span>Launch Simulation Lab →</span>
+            </button>
+          </div>
         </div>
-        <div className="header-btn-group">
-          <button className="secondary-btn" onClick={fetchDashboardData} disabled={isLoading}>
-            <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
-            <span>Refresh SOC</span>
-          </button>
-          <button className="primary-btn" onClick={() => navigate('/events')}>
-            <Zap size={16} />
-            <span>Test Telemetry Stream</span>
-          </button>
+
+        {/* Organic Living Trust Dial */}
+        <div className="hero-trust-visual">
+          <div className="organic-trust-orb">
+            <span className="trust-orb-num">{avgTrustScore}</span>
+            <span className="trust-orb-label">Mean Trust</span>
+          </div>
+          <span className="trust-orb-badge">
+            {avgTrustScore >= 80 ? '✓ REPUTATION INTACT' : '⚠ ANOMALY DETECTED'}
+          </span>
         </div>
       </div>
 
       {error && (
-        <div className="auth-alert error mb-4">
+        <div className="error-banner">
           <AlertTriangle size={18} />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Primary SOC Metrics Row */}
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Monitored AI Agents</span>
-            <div className="metric-icon-wrap blue">
-              <Users size={20} />
-            </div>
+      {/* Signature 5-Engine Visual System */}
+      <div className="connected-engines-zone">
+        <div className="engines-zone-header">
+          <div className="engines-zone-title">
+            <Shield size={20} className="text-indigo" />
+            <span>5-Engine Security Architecture</span>
+            <span className="text-xs text-muted font-normal ml-2">// Deterministic Arbitration Flow</span>
           </div>
-          <div className="metric-value">{isLoading ? '...' : agents.length}</div>
-          <div className="metric-subtext">
-            <span className="text-success font-medium">{activeAgentsCount} Active</span>
-            {suspendedAgentsCount > 0 && (
-              <span className="text-warning font-medium ml-2">({suspendedAgentsCount} Suspended)</span>
-            )}
-          </div>
+          <span className="text-xs font-mono font-bold text-primary bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
+            5/5 ACTIVE
+          </span>
         </div>
 
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Mean Agent Trust Score</span>
-            <div className="metric-icon-wrap green">
-              <Shield size={20} />
+        <div className="engines-flow-diagram">
+          <div className="engine-node-card">
+            <div className="node-top-bar">
+              <div className="node-icon-circle bg-indigo-50 text-indigo-700">
+                <Key size={16} />
+              </div>
+              <span className="node-num">01 // POLICY</span>
             </div>
+            <div className="node-name">Authoritative Policy</div>
+            <p className="node-desc">
+              Compares agent actions directly against database permissions. Self-reported claims are ignored.
+            </p>
+            <span className="node-status-pill badge-allow">AUTHORITATIVE</span>
           </div>
-          <div className="metric-value">
-            {isLoading ? '...' : `${avgTrustScore}/100`}
-          </div>
-          <div className="metric-subtext">
-            <span className={avgTrustScore >= 80 ? 'text-success' : 'text-warning'}>
-              {avgTrustScore >= 80 ? 'Authoritative reputation intact' : 'Degraded trust detected'}
-            </span>
-          </div>
-        </div>
 
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Security Decisions Arbitrated</span>
-            <div className="metric-icon-wrap red">
-              <ShieldAlert size={20} />
+          <div className="engine-node-card">
+            <div className="node-top-bar">
+              <div className="node-icon-circle bg-cyan-50 text-cyan-700">
+                <GitBranch size={16} />
+              </div>
+              <span className="node-num">02 // PROVENANCE</span>
             </div>
+            <div className="node-name">Source Provenance</div>
+            <p className="node-desc">
+              Tracks directive chain-of-custody and flags untrusted inputs or indirect injection attempts.
+            </p>
+            <span className="node-status-pill badge-allow">LINEAGE CHECK</span>
           </div>
-          <div className="metric-value">{isLoading ? '...' : events.length}</div>
-          <div className="metric-subtext">
-            <span className="text-danger font-medium">{blockCount} Blocked</span>
-            <span className="text-warning font-medium ml-2">{reviewCount} Review</span>
-            <span className="text-success font-medium ml-2">{allowCount} Allowed</span>
-          </div>
-        </div>
 
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Security Intelligence Pipeline</span>
-            <div className="metric-icon-wrap emerald">
-              <CheckCircle2 size={20} />
+          <div className="engine-node-card">
+            <div className="node-top-bar">
+              <div className="node-icon-circle bg-purple-50 text-purple-700">
+                <Compass size={16} />
+              </div>
+              <span className="node-num">03 // INTENT</span>
             </div>
+            <div className="node-name">Intent Integrity</div>
+            <p className="node-desc">
+              Measures semantic goal divergence against original session baseline (Intent Drift).
+            </p>
+            <span className="node-status-pill badge-allow">BASELINE DRIFT</span>
           </div>
-          <div className="metric-value text-success text-2xl font-bold">ACTIVE</div>
-          <div className="metric-subtext text-muted">
-            5 Engines Arbitrating (Cycle 3)
+
+          <div className="engine-node-card">
+            <div className="node-top-bar">
+              <div className="node-icon-circle bg-rose-50 text-rose-700">
+                <Flame size={16} />
+              </div>
+              <span className="node-num">04 // RISK</span>
+            </div>
+            <div className="node-name">Risk & Arbitration</div>
+            <p className="node-desc">
+              Synthesizes signals into composite threat score yielding ALLOW, REVIEW, or BLOCK verdicts.
+            </p>
+            <span className="node-status-pill badge-allow">BOUNDED VERDICT</span>
+          </div>
+
+          <div className="engine-node-card">
+            <div className="node-top-bar">
+              <div className="node-icon-circle bg-emerald-50 text-emerald-700">
+                <Shield size={16} />
+              </div>
+              <span className="node-num">05 // TRUST</span>
+            </div>
+            <div className="node-name">Dynamic Trust</div>
+            <p className="node-desc">
+              Updates living mathematical agent reputation score based on arbitrated actions.
+            </p>
+            <span className="node-status-pill badge-allow">SCORE EVOLUTION</span>
           </div>
         </div>
       </div>
 
-      {/* Continuous Security Engines Status Bar */}
-      <div className="engines-status-banner">
-        <div className="engines-banner-header">
-          <Shield size={16} className="text-cyan" />
-          <span className="font-semibold">TrustGuard Multi-Engine Security Architecture (Cycle 3)</span>
-        </div>
-        <div className="engines-chips-grid">
-          <div className="engine-status-tag">
-            <Key size={13} className="text-blue" />
-            <span>3.1 Policy Engine: <strong>Authoritative</strong></span>
-          </div>
-          <div className="engine-status-tag">
-            <GitBranch size={13} className="text-cyan" />
-            <span>3.2 Provenance Engine: <strong>Active</strong></span>
-          </div>
-          <div className="engine-status-tag">
-            <Compass size={13} className="text-indigo" />
-            <span>3.3 Intent Integrity: <strong>Active</strong></span>
-          </div>
-          <div className="engine-status-tag">
-            <Flame size={13} className="text-red" />
-            <span>3.4 Risk & Decision: <strong>Active</strong></span>
-          </div>
-          <div className="engine-status-tag">
-            <Shield size={13} className="text-emerald" />
-            <span>3.5 Dynamic Trust: <strong>Active</strong></span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Grid: Recent Arbitrated Decisions & Registered Agents */}
-      <div className="overview-split-grid">
-        {/* Left: Recent Security Decisions */}
-        <div className="card">
-          <div className="card-header flex-between">
-            <div className="card-title-wrap">
-              <ShieldAlert size={18} className="text-accent" />
-              <h3>Recent Security Decisions</h3>
-            </div>
-            <button className="text-btn" onClick={() => navigate('/decisions')}>
-              Decision Center <ArrowUpRight size={14} />
+      {/* Asymmetric Split Layout: Live Activity Stream & Monitored Fleet */}
+      <div className="editorial-split-grid">
+        {/* Left: Live Activity Timeline */}
+        <div className="editorial-card">
+          <div className="card-editorial-head">
+            <h3>
+              <Activity size={18} className="text-indigo" />
+              <span>Live Security Telemetry Stream</span>
+            </h3>
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() => navigate('/events')}
+            >
+              All Events →
             </button>
           </div>
 
           {isLoading ? (
-            <div className="card-loader">
-              <div className="spinner-small" />
-              <span>Loading security decisions...</span>
+            <div className="loading-state">
+              <RefreshCw className="spinner" size={18} />
+              <span>Streaming telemetry from PostgreSQL...</span>
             </div>
           ) : events.length === 0 ? (
-            <div className="empty-card-state">
-              <Zap size={32} className="text-muted mb-2" />
-              <p>No security telemetry events ingested yet.</p>
-              <button
-                className="secondary-btn btn-sm mt-3"
-                onClick={() => navigate('/events')}
-              >
-                Ingest Test Event
-              </button>
+            <div className="empty-state-card">
+              <Zap size={32} />
+              <p>No telemetry events recorded yet. Run a simulation to generate live traffic.</p>
             </div>
           ) : (
-            <div className="event-mini-list">
+            <div className="editorial-timeline-list">
               {events.slice(0, 6).map((evt) => {
                 const dec = decisionsMap[evt.eventId];
                 const verdict = dec?.decision || (evt.dataSensitivity === 'CRITICAL' ? 'BLOCK' : 'ALLOW');
                 const risk = dec?.riskLevel || (evt.dataSensitivity === 'CRITICAL' ? 'CRITICAL' : 'LOW');
 
                 return (
-                  <div key={evt.eventId} className="event-mini-item">
-                    <div className="event-mini-top">
+                  <div key={evt.eventId} className="editorial-event-row">
+                    <span className="event-time-stamp">
+                      {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+
+                    <span className="event-agent-tag">
+                      {evt.agentId || 'agent_001'}
+                    </span>
+
+                    <span className="event-action-text">{evt.action}</span>
+
+                    <span className="event-resource-code" title={evt.resource}>
+                      {evt.resource}
+                    </span>
+
+                    <div className="event-badges-col">
+                      <RiskBadge risk={risk} />
                       <DecisionBadge decision={verdict} />
-                      <RiskBadge riskLevel={risk} />
-                      <span className="code-tag">{evt.eventId}</span>
-                      <span className="event-time">
-                        {new Date(evt.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <div className="event-action-desc">
-                      <strong>{evt.tool}</strong>: <code>{evt.action}</code>
-                    </div>
-                    <div className="event-resource-row flex-between">
-                      <span>Target: <code>{evt.resource}</code></span>
+
                       <button
-                        className="btn-text-action"
+                        type="button"
+                        className="btn btn-secondary btn-xs ml-1"
                         onClick={() => setInvestigatingEvent(evt)}
+                        title="Forensic Evidence Inspection"
                       >
                         <Eye size={12} />
                         <span>Inspect</span>
@@ -271,44 +313,58 @@ const Overview = () => {
           )}
         </div>
 
-        {/* Right: Monitored Agents & Dynamic Trust */}
-        <div className="card">
-          <div className="card-header flex-between">
-            <div className="card-title-wrap">
-              <Users size={18} className="text-accent" />
-              <h3>Monitored AI Agents</h3>
-            </div>
-            <button className="text-btn" onClick={() => navigate('/agents')}>
-              Agent Registry <ArrowUpRight size={14} />
+        {/* Right: Monitored Agent Fleet */}
+        <div className="editorial-card">
+          <div className="card-editorial-head">
+            <h3>
+              <Users size={18} className="text-secondary" />
+              <span>Monitored Agent Fleet</span>
+            </h3>
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() => navigate('/agents')}
+            >
+              Fleet Matrix →
             </button>
           </div>
 
           {isLoading ? (
-            <div className="card-loader">
-              <div className="spinner-small" />
-              <span>Loading agent profiles...</span>
+            <div className="loading-state">
+              <RefreshCw className="spinner" size={18} />
+              <span>Loading fleet records...</span>
             </div>
           ) : agents.length === 0 ? (
-            <div className="empty-card-state">
-              <Users size={32} className="text-muted mb-2" />
-              <p>No agents registered in database yet.</p>
+            <div className="empty-state-card">
+              <Users size={32} />
+              <p>No agents registered in database.</p>
             </div>
           ) : (
-            <div className="agent-mini-list">
-              {agents.map((agent) => (
-                <div key={agent.agentId} className="agent-mini-item">
-                  <div className="agent-mini-info">
-                    <div className="agent-name-row">
-                      <span className="font-semibold">{agent.name}</span>
-                      <span className="code-tag">{agent.agentId}</span>
+            <div className="flex flex-col gap-3">
+              {agents.map((ag) => (
+                <div
+                  key={ag.agentId}
+                  className="p-3 bg-canvas-bg border border-border rounded-lg flex items-center justify-between transition-transform hover:-translate-y-0.5"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-900">{ag.name}</span>
+                      <span className="font-mono text-xs text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">
+                        {ag.agentId}
+                      </span>
                     </div>
-                    <p className="agent-objective-snip">{agent.declaredObjective}</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-[260px] truncate italic">
+                      "{ag.declaredObjective}"
+                    </p>
                   </div>
-                  <div className="agent-mini-stats">
-                    <span className={`status-pill ${agent.status.toLowerCase()}`}>
-                      {agent.status}
+
+                  <div className="text-right flex flex-col items-end">
+                    <span className={`text-xs font-bold ${ag.currentTrustScore >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {ag.currentTrustScore} / 100
                     </span>
-                    <TrustScoreMeter score={agent.currentTrustScore} size="compact" />
+                    <span className="text-[10px] uppercase font-bold text-slate-400">
+                      Trust Reputation
+                    </span>
                   </div>
                 </div>
               ))}
@@ -322,7 +378,11 @@ const Overview = () => {
         <InvestigationModal
           event={investigatingEvent}
           agent={agents.find((a) => a.agentId === investigatingEvent.agentId)}
-          session={{ originalIntent: agents.find((a) => a.agentId === investigatingEvent.agentId)?.declaredObjective }}
+          session={{
+            originalIntent:
+              agents.find((a) => a.agentId === investigatingEvent.agentId)?.declaredObjective ||
+              'Analyze quarterly financial telemetry',
+          }}
           isOpen={Boolean(investigatingEvent)}
           onClose={() => setInvestigatingEvent(null)}
         />

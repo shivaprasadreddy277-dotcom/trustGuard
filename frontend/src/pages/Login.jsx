@@ -1,211 +1,142 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Lock, Mail, User, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, Lock, User, AlertTriangle, ArrowRight, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
-  const { login, register } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { login, isAuthenticated } = useAuth();
 
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    name: '',
-    email: '',
-    password: '',
-  });
-
+  const [username, setUsername] = useState('alex_dev');
+  const [password, setPassword] = useState('dev12345');
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [error, setError] = useState(null);
 
-  const from = location.state?.from?.pathname || '/overview';
-
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setErrorMsg('');
-  };
+  // If already authenticated, redirect to overview
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/overview', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
     setIsLoading(true);
+    setError(null);
 
     try {
-      if (isRegisterMode) {
-        if (!formData.username || !formData.name || !formData.email || !formData.password) {
-          setErrorMsg('All fields are required.');
-          setIsLoading(false);
-          return;
-        }
-        await register(formData);
-        setSuccessMsg('Account registered successfully! Redirecting...');
-        setTimeout(() => navigate(from, { replace: true }), 800);
-      } else {
-        if (!formData.email || !formData.password) {
-          setErrorMsg('Please enter your email and password.');
-          setIsLoading(false);
-          return;
-        }
-        await login(formData.email, formData.password);
-        navigate(from, { replace: true });
-      }
+      await login(username, password);
+      navigate('/overview');
     } catch (err) {
-      setErrorMsg(err.message || 'Authentication failed. Please verify credentials.');
+      setError(err.message || 'Invalid operator credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Demo shortcut helper for jury test convenience
-  const fillDemoAccount = () => {
-    setIsRegisterMode(false);
-    setFormData({
-      username: 'alex_dev',
-      name: 'Alex Dev',
-      email: 'alex@novacorp.com',
-      password: 'SuperSecretPassword123!',
-    });
-    setErrorMsg('');
+  const handleQuickFill = (u, p) => {
+    setUsername(u);
+    setPassword(p);
   };
 
   return (
-    <div className="login-container">
-      <div className="login-grid-bg" />
+    <div className="min-h-screen bg-canvas-bg flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background organic glow */}
+      <div className="w-96 h-96 rounded-full bg-indigo-100/50 blur-3xl absolute -top-20 -left-20 pointer-events-none" />
+      <div className="w-96 h-96 rounded-full bg-rose-100/40 blur-3xl absolute -bottom-20 -right-20 pointer-events-none" />
 
-      <div className="login-card">
-        <div className="login-brand">
-          <div className="brand-badge">
-            <Shield className="brand-icon" size={32} />
+      <div className="w-full max-w-md bg-surface border-2 border-slate-900 rounded-3xl shadow-tactile p-8 relative z-10">
+        {/* Brand Header */}
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 bg-indigo-50 border-2 border-slate-900 text-indigo-700 rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-sm transform -rotate-3 hover:rotate-0 transition-transform">
+            <Shield size={30} />
           </div>
-          <h2>TrustGuard</h2>
-          <p className="login-subtitle">AI Security, Privacy & Trust Control Center</p>
+          <h1 className="font-display text-2xl font-extrabold text-slate-900 tracking-tight">
+            TrustGuard
+          </h1>
+          <div className="inline-flex items-center gap-1.5 bg-yellow-soft text-yellow-ink font-extrabold text-[11px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-yellow-border mt-1">
+            <Sparkles size={11} />
+            <span>AI Security Console</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Multi-engine continuous behavioral security for AI agent fleets.
+          </p>
         </div>
 
-        <div className="auth-tabs">
-          <button
-            type="button"
-            className={`auth-tab ${!isRegisterMode ? 'active' : ''}`}
-            onClick={() => {
-              setIsRegisterMode(false);
-              setErrorMsg('');
-            }}
-          >
-            Operator Sign In
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${isRegisterMode ? 'active' : ''}`}
-            onClick={() => {
-              setIsRegisterMode(true);
-              setErrorMsg('');
-            }}
-          >
-            Register Profile
-          </button>
-        </div>
-
-        {errorMsg && (
-          <div className="auth-alert error">
-            <AlertCircle size={18} />
-            <span>{errorMsg}</span>
+        {error && (
+          <div className="error-banner mb-4 text-xs">
+            <AlertTriangle size={15} />
+            <span>{error}</span>
           </div>
         )}
 
-        {successMsg && (
-          <div className="auth-alert success">
-            <CheckCircle2 size={18} />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="auth-form">
-          {isRegisterMode && (
-            <>
-              <div className="form-group">
-                <label htmlFor="username">Username</label>
-                <div className="input-with-icon">
-                  <User size={18} className="field-icon" />
-                  <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    placeholder="e.g. alex_dev"
-                    value={formData.username}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="name">Display Name</label>
-                <div className="input-with-icon">
-                  <User size={18} className="field-icon" />
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder="e.g. Alex Dev"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="email">Work Email</label>
-            <div className="input-with-icon">
-              <Mail size={18} className="field-icon" />
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Operator Username
+            </label>
+            <div className="relative">
               <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="operator@company.com"
-                value={formData.email}
-                onChange={handleChange}
+                type="text"
+                className="w-full pl-9"
+                placeholder="Enter operator username..."
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
+              <User size={15} className="absolute left-3 top-3 text-slate-400" />
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div className="input-with-icon">
-              <Lock size={18} className="field-icon" />
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Password
+            </label>
+            <div className="relative">
               <input
-                id="password"
-                name="password"
                 type="password"
-                placeholder="••••••••••••"
-                value={formData.password}
-                onChange={handleChange}
+                className="w-full pl-9"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <Lock size={15} className="absolute left-3 top-3 text-slate-400" />
             </div>
           </div>
 
-          <button type="submit" className="submit-btn" disabled={isLoading}>
-            {isLoading ? (
-              <span className="btn-loading">Authenticating...</span>
-            ) : (
-              <>
-                <span>{isRegisterMode ? 'Create Security Account' : 'Authenticate & Access SOC'}</span>
-                <ArrowRight size={18} />
-              </>
-            )}
+          <button
+            type="submit"
+            className="btn btn-primary btn-lg w-full mt-2"
+            disabled={isLoading}
+          >
+            <span>{isLoading ? 'Authenticating...' : 'Sign In to Security Console'}</span>
+            <ArrowRight size={16} />
           </button>
         </form>
 
-        <div className="login-footer">
-          <button type="button" className="demo-fill-btn" onClick={fillDemoAccount}>
-            Prefill Demo Operator Credentials
-          </button>
+        {/* Demo Quick Fill Helper for Jury */}
+        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+            ⚡ Quick-Fill Hackathon Jury Accounts
+          </span>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs font-mono"
+              onClick={() => handleQuickFill('alex_dev', 'dev12345')}
+            >
+              alex_dev (Lead)
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs font-mono"
+              onClick={() => handleQuickFill('sec_analyst', 'analyst12345')}
+            >
+              sec_analyst (SOC)
+            </button>
+          </div>
         </div>
       </div>
     </div>

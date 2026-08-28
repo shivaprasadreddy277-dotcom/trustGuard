@@ -111,8 +111,37 @@ export const eventsApi = {
   },
 };
 
-// ── Security Intelligence APIs (Cycle 3) ───────────────────────────────────
+// ── Security Intelligence APIs (Cycle 3 & 4) ─────────────────────────────────
 export const securityApi = {
   getDecision: (eventId) =>
     request(`/security/decisions/${encodeURIComponent(eventId)}`, { method: 'GET' }),
+
+  listAttackChains: () =>
+    request('/security/attack-chains', { method: 'GET' }),
+
+  getAttackChain: (chainId) =>
+    request(`/security/attack-chains/${encodeURIComponent(chainId)}`, { method: 'GET' }),
+
+  listAlerts: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.resolved !== undefined) query.append('resolved', params.resolved);
+    if (params.limit) query.append('limit', params.limit);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request(`/security/alerts${qs}`, { method: 'GET' });
+  },
+};
+
+export const attackChainsApi = {
+  listChains: () => request('/security/attack-chains', { method: 'GET' }),
+  getChain: (chainId) => request(`/security/attack-chains/${encodeURIComponent(chainId)}`, { method: 'GET' }),
+};
+
+export const alertsApi = {
+  listAlerts: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.resolved !== undefined) query.append('resolved', params.resolved);
+    if (params.limit) query.append('limit', params.limit);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request(`/security/alerts${qs}`, { method: 'GET' });
+  },
 };

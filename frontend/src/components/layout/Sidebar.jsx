@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   Search,
   Link,
+  Bell,
   PlaySquare,
 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ const Sidebar = () => {
     { path: '/decisions', label: 'Security Decisions', icon: ShieldAlert },
     { path: '/investigations', label: 'Investigations', icon: Search },
     { path: '/attack-chains', label: 'Attack Chains', icon: Link },
+    { path: '/alerts', label: 'Alerts', icon: Bell },
     { path: '/simulations', label: 'Simulations', icon: PlaySquare },
   ];
 

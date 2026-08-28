@@ -10,8 +10,10 @@ import Events from './pages/Events';
 import Decisions from './pages/Decisions';
 import Investigations from './pages/Investigations';
 import AttackChains from './pages/AttackChains';
+import Alerts from './pages/Alerts';
 import Simulations from './pages/Simulations';
 import './index.css';
+import './attackChains.css';
 
 function App() {
   return (
@@ -29,6 +31,7 @@ function App() {
             <Route path="investigations" element={<Investigations />} />
             <Route path="activity" element={<Navigate to="/events" replace />} />
             <Route path="attack-chains" element={<AttackChains />} />
+            <Route path="alerts" element={<Alerts />} />
             <Route path="simulations" element={<Simulations />} />
           </Route>
           <Route path="*" element={<Navigate to="/overview" replace />} />

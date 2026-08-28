@@ -1,0 +1,558 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CYCLE 4 — ATTACK CHAIN INTELLIGENCE & ALERTS STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Attack Chains List & Cards ───────────────────────────────────────────── */
+.attack-chains-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.attack-chain-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--status-block);
+  border-radius: 10px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.attack-chain-card:hover {
+  background-color: var(--bg-surface-raised);
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.chain-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.chain-id-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chain-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--status-block);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+}
+
+.chain-id-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'Roboto Mono', monospace;
+  color: #FFFFFF;
+}
+
+.chain-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chain-summary-box {
+  margin-bottom: 16px;
+}
+
+.summary-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Stage Progression Flow ───────────────────────────────────────────────── */
+.chain-stage-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 14px;
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.stage-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stage-chip-1 { background-color: rgba(59, 130, 246, 0.15); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.3); }
+.stage-chip-2 { background-color: rgba(139, 92, 246, 0.15); color: #A78BFA; border: 1px solid rgba(139, 92, 246, 0.3); }
+.stage-chip-3 { background-color: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.stage-chip-4 { background-color: rgba(236, 72, 153, 0.15); color: #F472B6; border: 1px solid rgba(236, 72, 153, 0.3); }
+.stage-chip-5 { background-color: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+.stage-arrow {
+  color: var(--text-muted);
+}
+
+.chain-footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+}
+
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.meta-left span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── Attack Chain Timeline Component ──────────────────────────────────────── */
+.attack-chain-timeline-root {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.timeline-journey-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 10px 14px;
+  background-color: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+}
+
+.timeline-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-step-card {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.step-node-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.step-number-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--bg-dark);
+  border: 2px solid var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  z-index: 2;
+}
+
+.step-line-connector {
+  flex: 1;
+  width: 2px;
+  background-color: var(--border-color-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  position: relative;
+}
+
+.connector-arrow {
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  border-radius: 50%;
+  padding: 1px;
+}
+
+.step-content-card {
+  flex: 1;
+  background-color: var(--bg-surface-raised);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: border-color 0.15s;
+}
+
+.step-content-card:hover {
+  border-color: var(--border-color-light);
+}
+
+.step-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.step-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.step-badges-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-main-meta {
+  margin-bottom: 10px;
+}
+
+.step-action-headline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.step-event-id {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.step-action-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.step-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-value {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.step-findings-callout {
+  margin-top: 10px;
+  background-color: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid var(--status-review);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.findings-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--status-review);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.findings-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* ── Attack Chain Detail Modal ────────────────────────────────────────────── */
+.attack-chain-modal-root {
+  max-width: 960px;
+}
+
+.confidence-pill {
+  font-size: 0.75rem;
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--status-block);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.confidence-pill strong {
+  color: #FFFFFF;
+}
+
+.chain-verdict-banner {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.05) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.verdict-headline {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.verdict-headline h3 {
+  font-size: 1.15rem;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+
+.verdict-summary-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.verdict-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+  padding-top: 12px;
+}
+
+.v-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.v-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.correlation-explanation-card {
+  background-color: var(--bg-surface-raised);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.explanation-intro {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.reasons-structured-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .reasons-structured-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reason-tile {
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.reason-tile-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 6px;
+}
+
+.reason-tile p {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ── Alerts View & Cards ──────────────────────────────────────────────────── */
+.alerts-list-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.alert-card-item {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--status-review);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.15s ease;
+}
+
+.alert-card-item:hover {
+  background-color: var(--bg-surface-raised);
+  border-color: var(--border-color-light);
+}
+
+.alert-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.alert-id-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alert-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--status-review);
+  border-radius: 4px;
+}
+
+.alert-id-text {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.alert-type-badge {
+  font-size: 0.7rem;
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.alert-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alert-body {
+  margin-bottom: 12px;
+}
+
+.alert-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+
+.alert-message {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.alert-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
+  padding-top: 10px;
+}
+
+.alert-meta-items {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.alert-meta-items span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-open {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--status-review);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-resolved {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--status-allow);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}

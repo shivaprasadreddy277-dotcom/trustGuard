@@ -156,7 +156,7 @@ async function login(req, res, next) {
     // Fetch password_hash for comparison, but it is NEVER returned to the client
     const result = await pool.query(
       `SELECT id, user_id_str, username, email, password_hash
-       FROM users WHERE email = $1`,
+       FROM users WHERE email = $1 OR username = $1`,
       [email.toLowerCase().trim()]
     );
 

@@ -7,6 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. users table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id_str VARCHAR(50) NOT NULL UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -145,6 +146,7 @@ CREATE TABLE simulation_runs (
 );
 
 -- Essential Performance Indexes
+CREATE UNIQUE INDEX idx_users_user_id_str ON users(user_id_str);
 CREATE UNIQUE INDEX idx_users_email ON users(email);
 CREATE UNIQUE INDEX idx_agents_agent_id_str ON agents(agent_id_str);
 CREATE UNIQUE INDEX idx_sessions_session_id_str ON sessions(session_id_str);

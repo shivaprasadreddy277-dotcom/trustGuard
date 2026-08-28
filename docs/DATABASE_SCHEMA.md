@@ -41,6 +41,7 @@ Stores details of console operators and developers authorized to manage the Trus
 | Field Name | PostgreSQL Type | Nullability | Default Value | Keys | Purpose |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | NOT NULL | `gen_random_uuid()` | PRIMARY KEY | Unique internal user identifier. |
+| `user_id_str` | `VARCHAR(50)` | NOT NULL | *None* | UNIQUE | Public API identifier (e.g., `usr_9018`). |
 | `username` | `VARCHAR(50)` | NOT NULL | *None* | UNIQUE | Unique identifier for operator authentication. |
 | `name` | `VARCHAR(100)` | NOT NULL | *None* | - | Display name of the operator. |
 | `email` | `VARCHAR(255)` | NOT NULL | *None* | UNIQUE | Operator email address. |
@@ -282,7 +283,10 @@ This section outlines foreign key connections, cardinalities, and their underlyi
 ## 13. Indexes
 To support efficient performance for the MVP analyst dashboard and inline engine telemetry ingestion, the following indexes are defined:
 
-1. **`idx_users_email` (UNIQUE)**
+1. **`idx_users_user_id_str` (UNIQUE)**
+   * **Target:** `users(user_id_str)`
+   * **Purpose:** Fast lookup of operator records by public API identifier during authentication token generation and profile retrieval.
+2. **`idx_users_email` (UNIQUE)**
    * **Target:** `users(email)`
    * **Purpose:** Ensures quick login checks and enforces unique email requirements during operator registration.
 2. **`idx_agents_agent_id_str` (UNIQUE)**
@@ -428,12 +432,12 @@ This section maps the API JSON structures defined in `docs/API_CONTRACT.md` to o
 
 ### Mismatches & Ambiguities Identified:
 
-1. **`username` vs `name`:**
-   * **Issue:** The `users` entity description requires an operator `name` field, but the registration API (`POST /api/auth/register`) and authentication payloads require a `username` (e.g., `alex_dev`) and no `name` field.
-   * **Resolution:** Both columns are included in the `users` database schema. The registration controller will populate `username` from the request, and set `name` to match `username` as a default until the operator updates their profile name.
-2. **Custom Prefixed ID Formats:**
-   * **Issue:** The API contract uses custom-prefixed string IDs (e.g., `evt_01j6abc123`, `sess_9988`, `al_88329`, `sim_89231`). Storing these directly as primary key fields complicates indexing and database migrations.
-   * **Resolution:** Standard UUIDv4 is used for internal primary and foreign keys. A secondary column stores public ID strings (e.g. `event_id_str`, `session_id_str`). The backend API router resolves string-to-UUID translations when receiving telemetry inputs or fetching resources.
+1. **`username` vs `name` — RESOLVED:**
+   * **Issue:** The `users` entity required a `name` field, but the registration API (`POST /api/auth/register`) did not include it.
+   * **Resolution:** The `name` field has been added to the registration request body in `docs/API_CONTRACT.md`. Both `username` and `name` are required for registration. The `name` column remains `NOT NULL` in the database.
+2. **Custom Prefixed ID Formats — RESOLVED:**
+   * **Issue:** The API contract returns user IDs in a string format (e.g., `usr_9018`), but the `users` table only had a UUID primary key with no string ID column.
+   * **Resolution:** A `user_id_str VARCHAR(50) NOT NULL UNIQUE` column has been added to the `users` table, following the same dual-identifier pattern already used by `agents.agent_id_str`, `sessions.session_id_str`, etc. The UUID remains the internal primary key; `user_id_str` is the public API identifier. The backend generates values in `usr_<unique-value>` format at registration time.
 3. **Session Creation Context Deficiency:**
    * **Issue:** The session creation endpoint (`POST /api/sessions`) receives only an `originalIntent` string parameter. It does not provide which user initializes the session or which agent profile is being monitored.
    * **Resolution:** The backend will populate `user_id` by extracting the operator's ID from the JWT bearer token. For `agent_id`, since the endpoint does not specify an agent, the MVP backend will default to associating the session with the primary demonstration agent (`agent_001`, the NovaCorp Customer Support Agent) or dynamically link it upon receiving the first telemetry event containing both `sessionId` and `agentId`.

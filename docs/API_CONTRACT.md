@@ -143,6 +143,7 @@ All failure responses must use this structure:
     ```json
     {
       "username": "alex_dev",
+      "name": "Alex Dev",
       "email": "alex@novacorp.com",
       "password": "SuperSecretPassword123!"
     }

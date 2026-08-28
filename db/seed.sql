@@ -2,8 +2,8 @@
 -- Provides demo entities for the NovaCorp Sandbox environment
 
 -- 1. Operator Users
-INSERT INTO users (id, username, name, email, password_hash) VALUES
-('7f9b8032-4d2a-4a25-83e9-a4ef9a174c88', 'alex_dev', 'Alex Dev', 'alex@novacorp.com', '$2b$10$tQ1XQ.D3XbVdfVb9vRmWGuwA4F1D7aB4Hj4a4C9vD9j9F9E9F9E9a'); -- Dummy Bcrypt Hash
+INSERT INTO users (id, user_id_str, username, name, email, password_hash) VALUES
+('7f9b8032-4d2a-4a25-83e9-a4ef9a174c88', 'usr_9018', 'alex_dev', 'Alex Dev', 'alex@novacorp.com', '$2b$10$tQ1XQ.D3XbVdfVb9vRmWGuwA4F1D7aB4Hj4a4C9vD9j9F9E9F9E9a'); -- Dummy Bcrypt Hash
 
 -- 2. Agents
 INSERT INTO agents (id, agent_id_str, name, description, declared_objective, permissions, status, current_trust_score) VALUES

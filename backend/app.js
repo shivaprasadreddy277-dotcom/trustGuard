@@ -10,6 +10,7 @@ const helmet = require('helmet');
 
 const authRouter = require('./routes/auth');
 const healthRouter = require('./routes/health');
+const agentsRouter = require('./routes/agents');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -29,6 +30,7 @@ app.use(express.json());
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/agents', agentsRouter);
 
 // ── 404 & Error Handlers ─────────────────────────────────────────────────────
 app.use(notFoundHandler);

@@ -1,9 +1,12 @@
 /**
- * TrustGuard Frontend API Service Layer
- * Centralized client for all communication with the real backend.
+ * Base URL for the TrustGuard backend API.
+ * Uses VITE_API_URL in production (e.g. https://<backend-domain>),
+ * defaulting to the local '/api' proxy for localhost development.
  */
-
-const API_BASE = '/api';
+const rawApiUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+const API_BASE = rawApiUrl
+  ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`)
+  : '/api';
 
 /**
  * Helper to make authenticated HTTP requests.

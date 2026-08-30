@@ -3,6 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, User, Mail, AlertTriangle, UserPlus, ArrowRight, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+// Module-level singleton guard to ensure GIS is initialized ONLY ONCE across renders, mounts, and page transitions
+let isGsiInitialized = false;
+let currentGoogleCallback = null;
+
+function initializeGsiOnce(clientId) {
+  if (isGsiInitialized || !window.google?.accounts?.id || !clientId) return;
+
+  window.google.accounts.id.initialize({
+    client_id: clientId,
+    callback: (response) => {
+      if (currentGoogleCallback) {
+        currentGoogleCallback(response);
+      }
+    },
+  });
+  isGsiInitialized = true;
+}
+
 const Login = () => {
   const navigate = useNavigate();
   const { login, register, loginWithGoogle, isAuthenticated } = useAuth();
@@ -17,18 +35,48 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Keep currentGoogleCallback pointing to the latest component handler
+  const handleGoogleCredentialResponse = async (r) => {
+    if (r?.credential) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await loginWithGoogle({ credential: r.credential });
+        navigate('/overview');
+      } catch (err) {
+        setError(err.message || 'Google auth failed.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    currentGoogleCallback = handleGoogleCredentialResponse;
+  });
+
   useEffect(() => {
     if (isAuthenticated) navigate('/overview', { replace: true });
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
+    const cid = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const tryInit = () => {
+      if (cid && window.google?.accounts?.id) {
+        initializeGsiOnce(cid);
+      }
+    };
+
     if (!document.getElementById('google-gsi-client')) {
       const s = document.createElement('script');
       s.id = 'google-gsi-client';
       s.src = 'https://accounts.google.com/gsi/client';
       s.async = true;
       s.defer = true;
+      s.onload = tryInit;
       document.head.appendChild(s);
+    } else {
+      tryInit();
     }
   }, []);
 
@@ -56,10 +104,17 @@ const Login = () => {
   const handleGoogle = () => {
     setError(null);
     const cid = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (window.google?.accounts?.id && cid) {
-      window.google.accounts.id.initialize({ client_id: cid, callback: async (r) => { if (r.credential) { setIsLoading(true); try { await loginWithGoogle({ credential: r.credential }); navigate('/overview'); } catch (err) { setError(err.message || 'Google auth failed.'); } finally { setIsLoading(false); } } } });
+    if (!cid) {
+      setError('Google Sign-In not configured.');
+      return;
+    }
+
+    if (window.google?.accounts?.id) {
+      initializeGsiOnce(cid);
       window.google.accounts.id.prompt();
-    } else setError('Google Sign-In not configured.');
+    } else {
+      setError('Google Sign-In is still loading. Please try again in a moment.');
+    }
   };
 
   const inputCls = "w-full pl-10 pr-4 py-3 rounded-2xl border-2 border-orange-200 bg-white/80 text-slate-900 placeholder-orange-300/60 text-sm font-medium outline-none transition-all duration-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/15 focus:bg-white hover:border-orange-300";

@@ -367,48 +367,112 @@ textarea:focus {
   box-shadow: 3px 3px 0px rgba(15, 23, 42, 0.9);
 }
 
-.login-jury-helper {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-  text-align: center;
-}
-
-.jury-helper-label {
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.jury-quick-buttons {
+.auth-tabs {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
 }
 
-.jury-quick-btn {
-  background-color: #f8fafc;
-  border: 1px solid #cbd5e1;
+.auth-tab-btn {
+  flex: 1;
+  padding: 8px 12px;
   border-radius: 8px;
-  padding: 5px 10px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #334155;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #64748b;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.jury-quick-btn:hover {
-  background-color: #eef2ff;
-  border-color: #c7d2fe;
-  color: #4f46e5;
+.auth-tab-btn.active {
+  background-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.auth-divider span {
+  padding: 0 12px;
+}
+
+.btn-google-cta {
+  width: 100%;
+  height: 44px;
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.btn-google-cta:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.06);
+}
+
+.btn-google-cta:active {
+  transform: translateY(0);
+}
+
+.auth-switch-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.auth-switch-btn {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font-weight: 700;
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  margin-left: 6px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-switch-btn:hover {
+  color: #3730a3;
+}
+
 
 /* ── App Shell & Sidebar ─────────────────────────────────────────────────── */
 .app-layout {

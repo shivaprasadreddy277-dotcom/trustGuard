@@ -58,6 +58,12 @@ export const authApi = {
       body: JSON.stringify(userData),
     }),
 
+  googleLogin: (credentialData) =>
+    request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(credentialData),
+    }),
+
   getMe: () => request('/auth/me', { method: 'GET' }),
 
   getHealth: () => request('/health', { method: 'GET' }),

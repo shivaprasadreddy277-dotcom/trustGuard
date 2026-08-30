@@ -53,6 +53,16 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const loginWithGoogle = async (credentialData) => {
+    const data = await authApi.googleLogin(credentialData);
+    if (data.token && data.user) {
+      localStorage.setItem('trustguard_token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+    }
+    return data;
+  };
+
   const logout = () => {
     localStorage.removeItem('trustguard_token');
     setToken(null);
@@ -68,6 +78,7 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         register,
+        loginWithGoogle,
         logout,
       }}
     >

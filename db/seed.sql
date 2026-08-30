@@ -3,7 +3,9 @@
 
 -- 1. Operator Users
 INSERT INTO users (id, user_id_str, username, name, email, password_hash) VALUES
-('7f9b8032-4d2a-4a25-83e9-a4ef9a174c88', 'usr_9018', 'alex_dev', 'Alex Dev', 'alex@novacorp.com', '$2b$10$tQ1XQ.D3XbVdfVb9vRmWGuwA4F1D7aB4Hj4a4C9vD9j9F9E9F9E9a'); -- Dummy Bcrypt Hash
+('7f9b8032-4d2a-4a25-83e9-a4ef9a174c88', 'usr_9018', 'alex_dev', 'Alex Dev', 'alex@novacorp.com', '$2b$10$y0IUHk2CaNspxo8W6Qm3iOa.xxrpiyvAK/NQy3cGV7jIRmABCh05y'),
+('8a1c9143-5e3b-5b36-94fa-b5fa0b285d99', 'usr_9019', 'sec_analyst', 'Security Analyst', 'analyst@novacorp.com', '$2b$10$R97Pr5UPP.NODPnafeV5yuQ3gmkcFN3zGlgE86P16P23U/C4BmC2K');
+
 
 -- 2. Agents
 INSERT INTO agents (id, agent_id_str, name, description, declared_objective, permissions, status, current_trust_score) VALUES

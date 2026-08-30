@@ -97,6 +97,8 @@ export const sessionsApi = {
 
   getSession: (sessionId) =>
     request(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'GET' }),
+
+  listSessions: () => request('/sessions', { method: 'GET' }),
 };
 
 // ── Agent Events & Telemetry APIs ────────────────────────────────────────────
@@ -121,6 +123,8 @@ export const eventsApi = {
 export const securityApi = {
   getDecision: (eventId) =>
     request(`/security/decisions/${encodeURIComponent(eventId)}`, { method: 'GET' }),
+
+  getDecisions: () => request('/security/decisions', { method: 'GET' }),
 
   listAttackChains: () =>
     request('/security/attack-chains', { method: 'GET' }),

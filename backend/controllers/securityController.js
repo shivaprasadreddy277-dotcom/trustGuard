@@ -270,10 +270,80 @@ async function listAlerts(req, res, next) {
   }
 }
 
+/**
+ * GET /api/security/decisions
+ * Auth: Required (JWT)
+ * List all security decisions for the authenticated user's events.
+ */
+async function listDecisions(req, res, next) {
+  try {
+    const query = `
+      SELECT
+        e.event_id_str AS "eventId",
+        d.decision AS "verdict",
+        d.risk_level AS "riskLevel",
+        d.trust_score AS "trustScore",
+        d.intent_status AS "intentStatus",
+        d.intent_alignment_score AS "intentAlignmentScore",
+        d.attack_chain_detected AS "attackChainDetected",
+        d.attack_chain_severity AS "attackChainSeverity",
+        d.created_at AS "timestamp",
+        e.action,
+        e.resource,
+        e.agent_id_str AS "agentId",
+        ac.chain_id_str AS "attackChainId",
+        d.security_signals AS "securitySignals"
+      FROM security_decisions d
+      JOIN (
+        SELECT ae.id, ae.event_id_str, ae.action, ae.resource, ae.session_id, ag.agent_id_str
+        FROM agent_events ae
+        JOIN agents ag ON ae.agent_id = ag.id
+      ) e ON d.event_id = e.id
+      JOIN sessions s ON e.session_id = s.id
+      LEFT JOIN attack_chains ac ON d.attack_chain_id = ac.id
+      WHERE s.user_id = $1
+      ORDER BY d.created_at DESC
+    `;
+
+    const result = await pool.query(query, [req.user.userId]);
+
+    const formatted = result.rows.map((row) => {
+      // Map securitySignals to mock engineResults object expected by Decisions.jsx
+      const signals = row.securitySignals || {};
+      const engineResults = {
+        policy: { score: signals.policyViolation ? 0 : 100 },
+        provenance: { score: signals.provenanceRisk === 'HIGH' ? 30 : signals.provenanceRisk === 'MEDIUM' ? 70 : 100 },
+        intent: { score: Math.round((parseFloat(row.intentAlignmentScore) || 1.0) * 100) },
+        risk: { score: row.riskLevel === 'CRITICAL' ? 100 : row.riskLevel === 'HIGH' ? 80 : row.riskLevel === 'MEDIUM' ? 50 : 10 },
+        trust: { score: row.trustScore || 100 }
+      };
+
+      return {
+        decisionId: row.eventId,
+        verdict: row.verdict,
+        timestamp: row.timestamp,
+        event: {
+          action: row.action,
+          resource: row.resource,
+          agentId: row.agentId,
+        },
+        engineResults
+      };
+    });
+
+    return res.status(200).json({
+      decisions: formatted,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getDecisionByEventId,
   getAttackChainById,
   listAttackChains,
   listAlerts,
+  listDecisions,
 };
 

@@ -76,7 +76,7 @@ const InvestigationModal = ({ event, agent, session, isOpen, onClose }) => {
             </div>
             <h2>Event Investigation: <code>{event.eventId}</code></h2>
             <div className="investigation-meta-line">
-              <span><Clock size={13} /> {new Date(event.timestamp || Date.now()).toLocaleString()}</span>
+              <span><Clock size={13} /> {event.timestamp ? new Date(event.timestamp).toLocaleString() : 'Recent Event'}</span>
               <span>• Agent: <strong>{event.agentId}</strong></span>
               <span>• Session: <strong>{event.sessionId}</strong></span>
               <span>• Data Sensitivity: <strong className={`text-sens-${event.dataSensitivity?.toLowerCase()}`}>{event.dataSensitivity}</strong></span>

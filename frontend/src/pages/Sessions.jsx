@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Radio,
-  Plus,
-  RefreshCw,
-  AlertTriangle,
-  Target,
-  Sparkles,
-} from 'lucide-react';
+import { Radio, Plus, RefreshCw, AlertTriangle, Target, Clock } from 'lucide-react';
 import { sessionsApi, agentsApi } from '../api/client';
 
 const Sessions = () => {
@@ -14,8 +7,6 @@ const Sessions = () => {
   const [agents, setAgents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // New Session Form
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newIntent, setNewIntent] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState('');
@@ -23,294 +14,95 @@ const Sessions = () => {
   const [createError, setCreateError] = useState(null);
 
   const fetchSessions = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true); setError(null);
     try {
-      const [sessRes, agRes] = await Promise.allSettled([
-        sessionsApi.listSessions(),
-        agentsApi.listAgents(),
-      ]);
-
-      const rawSessions = sessRes.status === 'fulfilled' ? sessRes.value.sessions || [] : [];
-      const rawAgents = agRes.status === 'fulfilled' ? agRes.value.agents || [] : [];
-
-      setSessions(rawSessions);
-      setAgents(rawAgents);
-      if (rawAgents.length > 0 && !selectedAgentId) {
-        setSelectedAgentId(rawAgents[0].agentId);
-      }
-    } catch (err) {
-      setError(err.message || 'Failed to load session registry.');
-    } finally {
-      setIsLoading(false);
-    }
+      const [sR, aR] = await Promise.allSettled([sessionsApi.listSessions(), agentsApi.listAgents()]);
+      setSessions(sR.status === 'fulfilled' ? sR.value.sessions || [] : []);
+      const ra = aR.status === 'fulfilled' ? aR.value.agents || [] : [];
+      setAgents(ra);
+      if (ra.length > 0 && !selectedAgentId) setSelectedAgentId(ra[0].agentId);
+    } catch (err) { setError(err.message); } finally { setIsLoading(false); }
   }, [selectedAgentId]);
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+  useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-  const handleCreateSession = async (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
-    if (!newIntent.trim()) {
-      setCreateError('Original intent baseline is required.');
-      return;
-    }
-
-    setIsCreating(true);
-    setCreateError(null);
-    try {
-      await sessionsApi.createSession({
-        originalIntent: newIntent.trim(),
-        agentId: selectedAgentId || undefined,
-      });
-
-      setNewIntent('');
-      setShowCreateModal(false);
-      fetchSessions();
-    } catch (err) {
-      setCreateError(err.message || 'Failed to initialize session.');
-    } finally {
-      setIsCreating(false);
-    }
+    if (!newIntent.trim()) { setCreateError('Intent required.'); return; }
+    setIsCreating(true); setCreateError(null);
+    try { await sessionsApi.createSession({ originalIntent: newIntent.trim(), agentId: selectedAgentId || undefined }); setNewIntent(''); setShowCreateModal(false); fetchSessions(); }
+    catch (err) { setCreateError(err.message); } finally { setIsCreating(false); }
   };
 
   return (
-    <div className="page-container">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="page-container space-y-6">
+      <div className="rounded-3xl p-7 flex items-center justify-between flex-wrap gap-4" style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #F0F9FF 50%, #F5F3FF 100%)', border: '2px solid #A7F3D0' }}>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold text-[#6A4D00] bg-[#FFF5DD] px-2.5 py-0.5 rounded-full border border-[#FFE29E]">
-              🎯 INTENT REGISTRY
-            </span>
-            <span className="text-xs text-[#8F8F8F] font-mono">// Semantic Baseline Arbitration</span>
-          </div>
-          <h1 className="font-display text-2xl font-bold text-[#2D2D2D]">
-            Session & Intent Integrity
-          </h1>
-          <p className="text-xs text-[#6B6B6B] mt-1">
-            Every session anchors an Authoritative Intent Baseline. The 3.3 Intent Integrity Engine measures ongoing agent drift against this baseline.
-          </p>
+          <span className="text-xs font-mono font-extrabold px-3 py-1 rounded-full text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #10B981, #0EA5E9)' }}>🎯 INTENT REGISTRY</span>
+          <h1 className="text-2xl font-extrabold text-slate-900 mt-2" style={{ fontFamily: 'Sora' }}>Session & Intent Integrity</h1>
+          <p className="text-sm text-slate-500 mt-1">Each session anchors an authoritative intent baseline for runtime drift analysis.</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={fetchSessions}
-            disabled={isLoading}
-          >
-            <RefreshCw size={14} className={isLoading ? 'spinner' : ''} />
-            <span>Refresh</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus size={15} />
-            <span>Initialize Session</span>
-          </button>
+        <div className="flex items-center gap-3">
+          <button type="button" className="btn btn-secondary" onClick={fetchSessions} disabled={isLoading}><RefreshCw size={15} className={isLoading ? 'spinner' : ''} /><span>Refresh</span></button>
+          <button type="button" className="btn btn-primary" onClick={() => setShowCreateModal(true)}><Plus size={16} /><span>New Session</span></button>
         </div>
       </div>
 
-      {/* Visual Intent Drift Teaching Banner */}
-      <div className="editorial-card p-6 bg-gradient-to-r from-white to-[#FFFDF8]">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={16} className="text-[#FFC857]" />
-          <h3 className="font-display text-sm font-bold text-[#2D2D2D] uppercase tracking-wider">
-            How TrustGuard Detects Intent Drift
-          </h3>
-        </div>
+      {error && <div className="card bg-rose-50 border-2 border-rose-200 p-4 text-rose-700 flex items-center gap-3 font-semibold text-sm"><AlertTriangle size={18} /><span>{error}</span></div>}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-[#FAF9F6] border border-[#EBEAE6] rounded-xl">
-            <span className="text-[11px] font-bold text-[#0E5E41] uppercase block mb-1">
-              01 // AUTHORITATIVE INTENT
-            </span>
-            <p className="text-xs text-[#2D2D2D] italic">
-              "Analyze NovaCorp quarterly financial telemetry"
-            </p>
-          </div>
-
-          <div className="p-4 bg-[#FAF9F6] border border-[#EBEAE6] rounded-xl">
-            <span className="text-[11px] font-bold text-[#07477D] uppercase block mb-1">
-              02 // OBSERVED ACTION
-            </span>
-            <p className="text-xs text-[#2D2D2D] font-mono">
-              agent.query_db("SELECT * FROM credentials")
-            </p>
-          </div>
-
-          <div className="p-4 bg-[#FEECEB] border border-[#FFC7BF] rounded-xl flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-[#991B1B] uppercase block mb-0.5">
-                03 // ALIGNMENT VERDICT
-              </span>
-              <span className="font-display font-bold text-sm text-[#801C0E]">
-                0.28 DRIFT DETECTED ⚠
-              </span>
-            </div>
-            <span className="font-mono text-xs font-extrabold text-[#991B1B] bg-white px-2 py-1 rounded border border-[#FF8B7B]">
-              BLOCK
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {error && (
-        <div className="error-banner">
-          <AlertTriangle size={18} />
-          <span>{error}</span>
+      {isLoading ? (
+        <div className="card py-16 flex flex-col items-center gap-3"><RefreshCw className="spinner text-emerald-500" size={28} /><span className="text-sm font-bold text-slate-500">Loading sessions...</span></div>
+      ) : sessions.length === 0 ? (
+        <div className="card py-16 text-center"><Radio size={36} className="text-slate-300 mx-auto mb-2" /><p className="font-bold text-slate-500">No sessions yet.</p>
+          <button type="button" className="btn btn-primary mt-4" onClick={() => setShowCreateModal(true)}>Create First Session</button></div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {sessions.map((sess) => {
+            const agent = agents.find((a) => a.agentId === sess.agentId);
+            const trust = sess.trustScore ?? (agent?.currentTrustScore || 90);
+            return (
+              <div key={sess.sessionId || sess.id} className="card p-6 space-y-3 hover:border-emerald-400">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-300">{sess.sessionId || sess.id}</span>
+                    {sess.agentId && <span className="font-mono text-xs text-sky-600 font-bold">• {sess.agentId}</span>}
+                  </div>
+                  <span className={`badge text-xs ${trust >= 80 ? 'badge-allow' : 'badge-review'}`}>{trust >= 80 ? '✓ COMPLIANT' : '⚠ DRIFT'}</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-emerald-50 border-2 border-emerald-200">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 uppercase mb-1"><Target size={14} className="text-amber-500" /><span>Original Intent</span></div>
+                  <p className="text-sm font-semibold text-slate-800 italic">"{sess.originalIntent || 'Analyze quarterly financial telemetry'}"</p>
+                </div>
+                <div className="pt-3 border-t-2 border-emerald-100 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1 text-slate-500 font-mono"><Clock size={13} /><span>{sess.createdAt ? new Date(sess.createdAt).toLocaleString() : 'Active'}</span></div>
+                  <span className={`font-mono font-extrabold text-sm ${trust >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>{trust} / 100</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Sessions List */}
-      <div className="editorial-card">
-        <div className="card-editorial-head">
-          <h3>
-            <Radio size={18} className="text-[#FFC857]" />
-            <span>Active & Recorded Sessions ({sessions.length})</span>
-          </h3>
-        </div>
-
-        {isLoading ? (
-          <div className="loading-state">
-            <RefreshCw className="spinner" size={20} />
-            <span>Loading sessions from PostgreSQL...</span>
-          </div>
-        ) : sessions.length === 0 ? (
-          <div className="empty-state-card">
-            <Radio size={36} />
-            <p>No active sessions found. Initialize a new session to establish an intent baseline.</p>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table-dark">
-              <thead>
-                <tr>
-                  <th>Session ID</th>
-                  <th>Agent Binding</th>
-                  <th>Authoritative Intent Baseline</th>
-                  <th>Trust Score</th>
-                  <th>Status</th>
-                  <th>Started</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((sess) => (
-                  <tr key={sess.sessionId}>
-                    <td className="mono-val font-semibold text-[#48267E]">{sess.sessionId}</td>
-                    <td>
-                      <span className="mono-val text-xs text-[#2D2D2D] font-semibold">
-                        {sess.agentId || 'agent_001'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <Target size={14} className="text-[#0E5E41] flex-shrink-0" />
-                        <span className="text-[#2D2D2D] text-xs italic font-medium">
-                          "{sess.originalIntent}"
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="font-extrabold text-[#2D2D2D] text-sm">
-                        {sess.currentTrustScore ?? 100}{' '}
-                        <span className="text-xs text-[#8F8F8F] font-normal">/ 100</span>
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-pill-badge status-${sess.status.toLowerCase()}`}>
-                        ● {sess.status}
-                      </span>
-                    </td>
-                    <td className="text-xs text-[#8F8F8F]">
-                      {new Date(sess.createdAt || Date.now()).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Create Session Modal */}
       {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '520px' }}>
-            <div className="modal-header">
-              <h3>Initialize New Security Session</h3>
-              <button
-                type="button"
-                className="btn btn-secondary btn-xs"
-                onClick={() => setShowCreateModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSession}>
-              <div className="modal-body flex flex-col gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
-                    Select Agent
-                  </label>
-                  <select
-                    className="w-full"
-                    value={selectedAgentId}
-                    onChange={(e) => setSelectedAgentId(e.target.value)}
-                  >
-                    {agents.map((ag) => (
-                      <option key={ag.agentId} value={ag.agentId}>
-                        {ag.name} ({ag.agentId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#2D2D2D] uppercase mb-1">
-                    Original Intent (Authoritative Baseline)
-                  </label>
-                  <textarea
-                    rows={3}
-                    className="w-full"
-                    placeholder="e.g. Analyze monthly financial metrics and report quarterly statistics"
-                    value={newIntent}
-                    onChange={(e) => setNewIntent(e.target.value)}
-                    required
-                  />
-                  <span className="text-xs text-[#8F8F8F] mt-1 block">
-                    All future actions in this session will be arbitrated for semantic drift against this text.
-                  </span>
-                </div>
-
-                {createError && (
-                  <div className="error-banner text-xs">
-                    <AlertTriangle size={14} />
-                    <span>{createError}</span>
-                  </div>
-                )}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg p-7 rounded-3xl bg-white border-2 border-orange-200 shadow-2xl">
+            <h2 className="text-xl font-extrabold text-slate-900 mb-1">Initialize Session</h2>
+            <p className="text-xs text-slate-500 mb-5">Register a new intent baseline for drift analysis.</p>
+            {createError && <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold">{createError}</div>}
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Assign Agent</label>
+                <select className="w-full p-2.5 rounded-xl border-2 border-orange-200 text-sm font-semibold outline-none focus:border-orange-500" value={selectedAgentId} onChange={(e) => setSelectedAgentId(e.target.value)}>
+                  {agents.map((a) => <option key={a.agentId} value={a.agentId}>{a.name} ({a.agentId})</option>)}
+                </select>
               </div>
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isCreating}
-                >
-                  {isCreating ? 'Initializing...' : 'Establish Baseline & Start'}
-                </button>
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Original Intent</label>
+                <textarea rows={3} className="w-full p-3 rounded-xl border-2 border-orange-200 text-sm outline-none focus:border-orange-500" placeholder="e.g. Generate read-only financial summary..." value={newIntent} onChange={(e) => setNewIntent(e.target.value)} required />
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button type="button" className="btn btn-secondary text-xs" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary text-xs" disabled={isCreating}>{isCreating ? 'Creating...' : 'Create Session'}</button>
               </div>
             </form>
           </div>
@@ -319,5 +111,4 @@ const Sessions = () => {
     </div>
   );
 };
-
 export default Sessions;

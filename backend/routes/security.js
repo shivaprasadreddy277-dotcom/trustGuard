@@ -17,6 +17,7 @@ const {
   getAttackChainById,
   listAttackChains,
   listAlerts,
+  listDecisions,
 } = require('../controllers/securityController');
 
 const router = Router();
@@ -24,6 +25,7 @@ const router = Router();
 // All security intelligence routes require authentication
 router.use(authenticate);
 
+router.get('/decisions', listDecisions);
 router.get('/decisions/:eventId', getDecisionByEventId);
 router.get('/attack-chains/:chainId', getAttackChainById);
 router.get('/attack-chains', listAttackChains);

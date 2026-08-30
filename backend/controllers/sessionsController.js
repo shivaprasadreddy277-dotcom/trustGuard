@@ -138,4 +138,30 @@ async function getSession(req, res, next) {
   }
 }
 
-module.exports = { createSession, getSession };
+/**
+ * GET /api/sessions
+ * Auth: Required (JWT)
+ * Lists all sessions for the authenticated user.
+ */
+async function listSessions(req, res, next) {
+  try {
+    const result = await pool.query(
+      `SELECT s.session_id_str AS "sessionId", s.original_intent AS "originalIntent",
+              s.current_trust_score AS "trustScore", s.status, s.created_at AS "createdAt",
+              a.agent_id_str AS "agentId"
+       FROM sessions s
+       JOIN agents a ON s.agent_id = a.id
+       WHERE s.user_id = $1
+       ORDER BY s.created_at DESC`,
+      [req.user.userId]
+    );
+
+    return res.status(200).json({
+      sessions: result.rows,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { createSession, getSession, listSessions };

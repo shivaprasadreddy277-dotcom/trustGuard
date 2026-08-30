@@ -23,8 +23,28 @@ const app = express();
 app.use(helmet());
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  process.env.FRONTEND_URL,
+  process.env.CORS_ORIGIN,
+]
+  .filter(Boolean)
+  .flatMap((o) => o.split(',').map((s) => s.trim().replace(/\/+$/, '')))
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, server-to-server, health probes)
+    if (!origin) return callback(null, true);
+
+    const normalizedOrigin = origin.trim().replace(/\/+$/, '');
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
   credentials: true,
 }));
 

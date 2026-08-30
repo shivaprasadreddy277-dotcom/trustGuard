@@ -1223,4 +1223,117 @@ h3 {
   box-shadow: 0 4px 12px var(--glow-orange);
 }
 
+/* ── Security Alerts Side-by-Side Split Architecture (Crimson Incident Theme) ── */
+.alerts-split-container {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .alerts-split-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.alerts-queue-sidebar {
+  background: var(--surface);
+  border: 1.5px solid #FECDD3;
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: 0 4px 20px rgba(244, 63, 94, 0.06);
+  display: flex;
+  flex-direction: column;
+  height: 760px;
+  max-height: 760px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.alerts-queue-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alerts-queue-card {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid #FFE4E6;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.alerts-queue-card:hover {
+  border-color: #F43F5E;
+  background: #FFF1F2;
+  transform: translateX(2px);
+}
+
+.alerts-queue-card.active-selected {
+  border-color: #E11D48;
+  background: linear-gradient(135deg, #FFF1F2 0%, #FFF5F7 60%, #FFFBEB 100%);
+  box-shadow: 0 4px 16px rgba(225, 29, 72, 0.16);
+  border-width: 2px;
+}
+
+.alerts-queue-card.severity-critical {
+  border-left: 5px solid #E11D48;
+}
+
+.alerts-queue-card.severity-high {
+  border-left: 5px solid #F97316;
+}
+
+.alerts-queue-card.severity-medium {
+  border-left: 5px solid #F59E0B;
+}
+
+.alerts-queue-card.severity-low {
+  border-left: 5px solid #10B981;
+}
+
+.alerts-detail-panel {
+  background: var(--surface);
+  border: 1.5px solid #FECDD3;
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  box-shadow: 0 4px 24px rgba(244, 63, 94, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 760px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
+
 

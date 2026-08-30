@@ -12,6 +12,7 @@ import Investigations from './pages/Investigations';
 import AttackChains from './pages/AttackChains';
 import Alerts from './pages/Alerts';
 import Simulations from './pages/Simulations';
+import Guide from './pages/Guide';
 import './index.css';
 import './lightTheme.css';
 import './attackChains.css';
@@ -35,6 +36,7 @@ function App() {
             <Route path="attack-chains" element={<AttackChains />} />
             <Route path="alerts" element={<Alerts />} />
             <Route path="simulations" element={<Simulations />} />
+            <Route path="guide" element={<Guide />} />
           </Route>
           <Route path="*" element={<Navigate to="/overview" replace />} />
         </Routes>

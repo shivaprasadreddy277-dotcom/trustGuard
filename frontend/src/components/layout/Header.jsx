@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogOut, Sun, Moon } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authApi } from '../../api/client';
 
@@ -7,20 +7,10 @@ const Header = () => {
   const { user, logout } = useAuth();
   const [healthStatus, setHealthStatus] = useState({ status: 'healthy', version: '1.0.0' });
 
-  // Theme support
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('trustguard_theme') || 'light';
-  });
-
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    document.body.className = theme === 'dark' ? 'dark-mode' : 'light-mode';
-    localStorage.setItem('trustguard_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.body.className = 'light-mode';
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,19 +44,8 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Right: Theme Switcher, Operator Profile & Sign Out */}
+      {/* Right: Operator Profile & Sign Out */}
       <div className="header-actions">
-        {/* Theme Switcher */}
-        <button
-          type="button"
-          className="btn-theme-toggle"
-          onClick={toggleTheme}
-          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-        >
-          {theme === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-orange-600" />}
-          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
-        </button>
-
         {/* Operator Profile */}
         <div className="operator-profile">
           <div className="operator-avatar">

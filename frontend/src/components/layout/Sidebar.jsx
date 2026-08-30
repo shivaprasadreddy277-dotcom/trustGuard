@@ -11,6 +11,7 @@ import {
   Zap,
   Layers,
   PlaySquare,
+  BookOpen,
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -84,6 +85,24 @@ const Sidebar = () => {
             </ul>
           </div>
         ))}
+
+        {/* ── RESOURCES & GUIDE: Positioned at the very bottom of the sidebar ── */}
+        <div className="pt-3 pb-1">
+          <div className="nav-section-title">RESOURCES & HELP</div>
+          <ul className="nav-list">
+            <li>
+              <NavLink
+                to="/guide"
+                className={({ isActive }) =>
+                  isActive ? 'nav-item-link active' : 'nav-item-link'
+                }
+              >
+                <BookOpen size={16} />
+                <span>Platform Guide</span>
+              </NavLink>
+            </li>
+          </ul>
+        </div>
       </div>
 
       {/* System Status Footer */}

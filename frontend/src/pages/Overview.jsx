@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowRight, RefreshCw, Shield, Zap, Users, Radio, ShieldCheck, AlertTriangle, Eye, Activity } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, RefreshCw, Shield, Zap, Users, Radio, ShieldCheck, AlertTriangle, Eye, Activity, BookOpen } from 'lucide-react';
 import { eventsApi, agentsApi, sessionsApi, attackChainsApi, alertsApi, simulationApi, securityApi } from '../api/client';
 import DecisionBadge from '../components/security/DecisionBadge';
 import InvestigationModal from '../components/security/InvestigationModal';
 
 const Overview = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ agents: 0, sessions: 0, events: 0, chains: 0, alerts: 0 });
   const [recentEvents, setRecentEvents] = useState([]);
   const [agents, setAgents] = useState([]);

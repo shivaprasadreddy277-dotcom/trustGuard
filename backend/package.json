@@ -14,7 +14,8 @@
     "test:security": "node --test tests/security.test.js",
     "test:chains": "node --test tests/attackChain.test.js",
     "test:sim": "node --test tests/simulation.test.js",
-    "test:all": "node --test tests/auth.test.js tests/agents.test.js tests/sessions.test.js tests/events.test.js tests/security.test.js tests/attackChain.test.js tests/simulation.test.js"
+    "test:all": "node --test tests/auth.test.js tests/agents.test.js tests/sessions.test.js tests/events.test.js tests/security.test.js tests/attackChain.test.js tests/simulation.test.js",
+    "db:migrate": "node ../db/migrate_supabase.js"
   },
   "keywords": [],
   "author": "",

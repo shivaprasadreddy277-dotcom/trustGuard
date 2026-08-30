@@ -228,10 +228,10 @@ const Guide = () => {
   };
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-5 sm:space-y-6">
       {/* Top Handbook Header Banner */}
       <div 
-        className="rounded-3xl p-7 sm:p-9 flex items-center justify-between flex-wrap gap-4" 
+        className="rounded-3xl p-5 sm:p-7 md:p-9 flex flex-col md:flex-row md:items-center justify-between gap-4" 
         style={{ 
           background: 'linear-gradient(135deg, #FFF4ED 0%, #FFFBEB 40%, #F0F9FF 80%, #F5F3FF 100%)', 
           border: '2px solid #FFD0B5',
@@ -239,7 +239,7 @@ const Guide = () => {
         }}
       >
         <div className="max-w-2xl min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span 
               className="text-xs font-mono font-extrabold px-3 py-1 rounded-full text-white shadow-sm" 
               style={{ background: 'linear-gradient(135deg, #FF6B35, #F59E0B)' }}
@@ -253,14 +253,14 @@ const Guide = () => {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900" style={{ fontFamily: 'Sora' }}>
             TrustGuard Platform Handbook
           </h1>
-          <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
             Comprehensive architectural guide and operational manual explaining how TrustGuard protects autonomous AI agent fleets through real-time multi-engine arbitration.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <button 
             type="button" 
-            className="btn btn-primary" 
+            className="btn btn-primary w-full sm:w-auto justify-center" 
             onClick={() => navigate('/overview')}
           >
             <span>Go to Command Center →</span>
@@ -268,10 +268,33 @@ const Guide = () => {
         </div>
       </div>
 
+      {/* Mobile Chapter Quick Selector Ribbon (Visible on small screens) */}
+      <div className="md:hidden card p-2.5 bg-white border-2 border-orange-100 flex items-center gap-1.5 overflow-x-auto scrollbar-none shadow-2xs">
+        {filteredChapters.map((ch, idx) => {
+          const originalIdx = CHAPTERS.findIndex((c) => c.id === ch.id);
+          const isSelected = activeChapterIndex === originalIdx;
+          return (
+            <button
+              key={ch.id}
+              type="button"
+              onClick={() => setActiveChapterIndex(originalIdx)}
+              className={`px-3 py-1.5 rounded-xl font-extrabold text-[11px] whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 border ${
+                isSelected
+                  ? 'bg-orange-500 text-white border-orange-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-orange-50 border-slate-200'
+              }`}
+            >
+              <span>{ch.title.split('.')[0]}.</span>
+              <span>{ch.badge}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Main Full-Size Guidebook Container */}
-      <div className="card p-0 overflow-hidden border-2 border-orange-200 shadow-md rounded-3xl flex flex-col md:flex-row min-h-[680px]">
-        {/* Left Side: Table of Contents / Chapter Navigation */}
-        <div className="w-full md:w-72 lg:w-80 bg-slate-50/80 border-b md:border-b-0 md:border-r-2 border-orange-100 p-4 sm:p-5 flex flex-col justify-between shrink-0 space-y-4">
+      <div className="card p-0 overflow-hidden border-2 border-orange-200 shadow-md rounded-3xl flex flex-col md:flex-row min-h-[600px] sm:min-h-[680px]">
+        {/* Left Side: Table of Contents / Chapter Navigation (hidden on mobile, visible md+) */}
+        <div className="hidden md:flex w-72 lg:w-80 bg-slate-50/80 border-r-2 border-orange-100 p-4 sm:p-5 flex-col justify-between shrink-0 space-y-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-mono font-extrabold uppercase text-slate-500 tracking-wider">
@@ -356,11 +379,11 @@ const Guide = () => {
         </div>
 
         {/* Right Side: Chapter Reading Canvas */}
-        <div className="flex-1 p-6 sm:p-10 flex flex-col justify-between space-y-6 bg-white overflow-y-auto">
-          <div className="space-y-6">
+        <div className="flex-1 p-5 sm:p-8 md:p-10 flex flex-col justify-between space-y-6 bg-white overflow-y-auto min-w-0">
+          <div className="space-y-5 sm:space-y-6">
             {/* Chapter Hero Banner */}
             <div 
-              className="p-6 sm:p-7 rounded-3xl border-2 space-y-3 relative overflow-hidden"
+              className="p-5 sm:p-7 rounded-3xl border-2 space-y-2.5 sm:space-y-3 relative overflow-hidden"
               style={{ background: currentChapter.bg, borderColor: currentChapter.border }}
             >
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -381,33 +404,33 @@ const Guide = () => {
                   </button>
                 )}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900" style={{ fontFamily: 'Sora' }}>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900" style={{ fontFamily: 'Sora' }}>
                 {currentChapter.headline}
               </h2>
-              <p className="text-sm text-slate-700 leading-relaxed font-medium max-w-3xl">
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium max-w-3xl">
                 {currentChapter.description}
               </p>
             </div>
 
             {/* Chapter Detailed Sections */}
             {currentChapter.sections.map((sec, sIdx) => (
-              <div key={sIdx} className="space-y-3">
-                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <div key={sIdx} className="space-y-2.5 sm:space-y-3">
+                <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: currentChapter.color }} />
                   <span>{sec.heading}</span>
                 </h3>
 
                 {sec.body && (
-                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed bg-slate-50/80 p-5 rounded-2xl border border-slate-200">
+                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed bg-slate-50/80 p-4 sm:p-5 rounded-2xl border border-slate-200">
                     {sec.body}
                   </p>
                 )}
 
                 {sec.steps && (
-                  <div className="p-5 rounded-2xl bg-white border-2 border-orange-100 shadow-xs space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-orange-100 shadow-xs space-y-2.5 sm:space-y-3">
                     {sec.steps.map((st, idx) => (
-                      <div key={idx} className="flex items-start gap-3 text-xs sm:text-sm text-slate-800">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-orange-100 text-orange-800 font-mono font-bold text-xs shrink-0 mt-0.5 shadow-2xs">
+                      <div key={idx} className="flex items-start gap-2.5 sm:gap-3 text-xs sm:text-sm text-slate-800">
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center bg-orange-100 text-orange-800 font-mono font-bold text-[11px] sm:text-xs shrink-0 mt-0.5 shadow-2xs">
                           {idx + 1}
                         </div>
                         <div className="leading-relaxed font-medium">{st}</div>
@@ -417,16 +440,16 @@ const Guide = () => {
                 )}
 
                 {sec.items && (
-                  <div className="grid grid-cols-1 gap-2.5">
+                  <div className="grid grid-cols-1 gap-2 sm:gap-2.5">
                     {sec.items.map((it, idx) => (
                       <div 
                         key={idx} 
-                        className="p-4 rounded-2xl border border-orange-100/90 bg-orange-50/30 hover:bg-orange-50/60 transition-colors flex items-start gap-3.5 text-xs sm:text-sm"
+                        className="p-3.5 sm:p-4 rounded-2xl border border-orange-100/90 bg-orange-50/30 hover:bg-orange-50/60 transition-colors flex items-start gap-3 text-xs sm:text-sm"
                       >
-                        <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <strong className="text-slate-900 block font-bold text-sm">{it.label}</strong>
-                          <span className="text-slate-600 font-normal leading-relaxed mt-1 block" dangerouslySetInnerHTML={{ __html: it.text }} />
+                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <strong className="text-slate-900 block font-bold text-xs sm:text-sm">{it.label}</strong>
+                          <span className="text-slate-600 font-normal leading-relaxed mt-0.5 sm:mt-1 block text-xs" dangerouslySetInnerHTML={{ __html: it.text }} />
                         </div>
                       </div>
                     ))}
@@ -437,24 +460,24 @@ const Guide = () => {
           </div>
 
           {/* Chapter Navigation Footer */}
-          <div className="pt-6 border-t-2 border-orange-100 flex items-center justify-between flex-wrap gap-3">
+          <div className="pt-5 sm:pt-6 border-t-2 border-orange-100 flex items-center justify-between flex-wrap gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={handlePrev}
               disabled={activeChapterIndex === 0}
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-xs sm:btn-sm"
             >
-              <ChevronLeft size={15} />
-              <span>Previous Chapter</span>
+              <ChevronLeft size={14} />
+              <span>Previous</span>
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {CHAPTERS.map((ch, idx) => (
                 <div
                   key={ch.id}
                   onClick={() => setActiveChapterIndex(idx)}
-                  className={`h-2.5 rounded-full cursor-pointer transition-all ${
-                    activeChapterIndex === idx ? 'w-8 bg-orange-500' : 'w-2.5 bg-slate-200 hover:bg-slate-300'
+                  className={`h-2 sm:h-2.5 rounded-full cursor-pointer transition-all ${
+                    activeChapterIndex === idx ? 'w-6 sm:w-8 bg-orange-500' : 'w-2 sm:w-2.5 bg-slate-200 hover:bg-slate-300'
                   }`}
                   title={ch.title}
                 />
@@ -465,18 +488,18 @@ const Guide = () => {
               <button
                 type="button"
                 onClick={handleNext}
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-xs sm:btn-sm"
               >
-                <span>Next Chapter</span>
-                <ChevronRight size={15} />
+                <span>Next</span>
+                <ChevronRight size={14} />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => navigate('/overview')}
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-xs sm:btn-sm"
               >
-                <span>Finish Guide & Open Dashboard ✓</span>
+                <span>Finish ✓</span>
               </button>
             )}
           </div>

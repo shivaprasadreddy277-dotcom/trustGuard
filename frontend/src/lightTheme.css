@@ -200,8 +200,8 @@ h3 {
   z-index: 40;
 }
 
-@media (max-width: 960px) {
-  .sidebar {
+@media (max-width: 1024px) {
+  .sidebar:not(.fixed) {
     display: none;
   }
 }
@@ -1332,6 +1332,21 @@ h3 {
 
 .animate-slide-in-right {
   animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 

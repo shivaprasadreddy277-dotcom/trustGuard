@@ -307,10 +307,10 @@ const AttackChains = () => {
       </div>
 
       {/* ── Compact Square Grid Metrics ON TOP OF Navbar ── */}
-      <div className="flex items-center flex-wrap gap-5 sm:gap-6 pt-1 pb-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 pt-1 pb-1 max-w-2xl">
         {/* Square Card 1: Unique Trajectories */}
         <div 
-          className="w-[155px] sm:w-[170px] h-[135px] rounded-2xl p-4 border-2 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-lg shrink-0" 
+          className="w-full h-[120px] sm:h-[135px] rounded-2xl p-4 border-2 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-md" 
           style={{ background: '#FFF1F2', borderColor: '#FECDD3' }}
         >
           <div className="flex items-center justify-between">
@@ -333,7 +333,7 @@ const AttackChains = () => {
 
         {/* Square Card 2: Critical Severity */}
         <div 
-          className="w-[155px] sm:w-[170px] h-[135px] rounded-2xl p-4 border-2 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-lg shrink-0" 
+          className="w-full h-[120px] sm:h-[135px] rounded-2xl p-4 border-2 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-md" 
           style={{ background: '#FFFBEB', borderColor: '#FDE68A' }}
         >
           <div className="flex items-center justify-between">
@@ -356,7 +356,7 @@ const AttackChains = () => {
 
         {/* Square Card 3: Correlation Confidence */}
         <div 
-          className="w-[155px] sm:w-[170px] h-[135px] rounded-2xl p-4 border-2 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-lg shrink-0" 
+          className="w-full h-[120px] sm:h-[135px] rounded-2xl p-4 border-2 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-md" 
           style={{ background: '#FFF4ED', borderColor: '#FFD0B5' }}
         >
           <div className="flex items-center justify-between">
@@ -379,7 +379,7 @@ const AttackChains = () => {
       </div>
 
       {/* ── Feature Navigation Bar with Vibrant Hover & Click Colors ────────── */}
-      <div className="card p-2.5 bg-white border-2 border-rose-100 flex items-center gap-3 flex-wrap shadow-xs">
+      <div className="card p-2 sm:p-2.5 bg-white border-2 border-rose-100 flex items-center gap-2 sm:gap-3 overflow-x-auto shadow-2xs scrollbar-none">
         {featuresList.map((feat) => {
           const Icon = feat.icon;
           const isActive = activeFeature === feat.id;
@@ -388,7 +388,7 @@ const AttackChains = () => {
               key={feat.id}
               type="button"
               onClick={() => setActiveFeature(feat.id)}
-              className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all duration-200 cursor-pointer flex items-center gap-2 border ${
+              className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl font-extrabold text-[11px] sm:text-xs transition-all duration-200 cursor-pointer flex items-center gap-2 border whitespace-nowrap shrink-0 ${
                 isActive 
                   ? 'text-white border-transparent' 
                   : `bg-white text-slate-700 border-slate-200 ${feat.hoverClass}`
@@ -398,7 +398,7 @@ const AttackChains = () => {
                 boxShadow: feat.activeShadow 
               } : {}}
             >
-              <Icon size={15} />
+              <Icon size={14} />
               <span>{feat.label}</span>
               {feat.count !== undefined && (
                 <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-700'}`}>

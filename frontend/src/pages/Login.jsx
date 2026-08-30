@@ -118,7 +118,7 @@ const Login = () => {
   const inputCls = "w-full pl-10 pr-4 py-3 rounded-2xl border-2 border-orange-200 bg-white/80 text-slate-900 placeholder-orange-300/60 text-sm font-medium outline-none transition-all duration-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/15 focus:bg-white hover:border-orange-300";
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FFF5EB 0%, #FFE8E0 20%, #F5E6FF 45%, #E8FFF5 65%, #FFF8EB 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 md:p-6 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FFF5EB 0%, #FFE8E0 20%, #F5E6FF 45%, #E8FFF5 65%, #FFF8EB 100%)' }}>
       {/* Floating colorful orbs */}
       <div className="absolute top-10 left-10 w-64 h-64 rounded-full bg-gradient-to-br from-orange-400/30 to-rose-400/20 blur-3xl animate-float pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-72 h-72 rounded-full bg-gradient-to-br from-violet-400/25 to-pink-400/15 blur-3xl pointer-events-none" style={{ animation: 'float 4s ease-in-out infinite 1s' }} />
@@ -126,9 +126,9 @@ const Login = () => {
 
       <div className="w-full max-w-md relative z-10">
         {/* Card */}
-        <div className="rounded-3xl p-8 sm:p-10 bg-white/90 backdrop-blur-2xl border-2 border-orange-200/80 shadow-[0_20px_60px_rgba(255,107,53,0.12),0_8px_20px_rgba(139,92,246,0.06)]">
+        <div className="rounded-3xl p-5 sm:p-8 md:p-10 bg-white/95 backdrop-blur-2xl border-2 border-orange-200/80 shadow-[0_20px_60px_rgba(255,107,53,0.12),0_8px_20px_rgba(139,92,246,0.06)]">
           {/* Accent bar */}
-          <div className="w-16 h-1.5 rounded-full mx-auto mb-7" style={{ background: 'linear-gradient(90deg, #FF6B35, #F43F5E, #8B5CF6, #10B981)' }} />
+          <div className="w-16 h-1.5 rounded-full mx-auto mb-6 sm:mb-7" style={{ background: 'linear-gradient(90deg, #FF6B35, #F43F5E, #8B5CF6, #10B981)' }} />
 
           {/* Brand */}
           <div className="flex flex-col items-center text-center mb-7">

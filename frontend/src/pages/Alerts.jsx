@@ -332,16 +332,39 @@ const Alerts = () => {
         </div>
       )}
 
-      {/* ── Two-Section Side-by-Side Split View ─────────────────────────────── */}
+      {/* ── Mobile Split View Tab Switcher (Visible on screens < 1024px) ── */}
+      <div className="flex lg:hidden bg-white p-1.5 rounded-2xl border-2 border-rose-200 shadow-2xs mb-2">
+        <button
+          type="button"
+          onClick={() => setViewMode('QUEUE')}
+          className={`flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+            viewMode === 'QUEUE' ? 'bg-rose-500 text-white shadow-xs' : 'text-slate-600 hover:text-rose-600'
+          }`}
+        >
+          <Bell size={14} />
+          <span>Incident Queue ({processedAlerts.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode('FOCUS')}
+          className={`flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+            viewMode === 'FOCUS' || viewMode === 'SPLIT' ? 'bg-rose-500 text-white shadow-xs' : 'text-slate-600 hover:text-rose-600'
+          }`}
+        >
+          <Target size={14} />
+          <span>Forensic Console</span>
+        </button>
+      </div>
+
+      {/* ── Two-Section Responsive Side-by-Side View ─────────────────────────────── */}
       <div 
-        className="alerts-split-container"
-        style={
+        className={`grid gap-5 sm:gap-6 items-start w-full ${
           viewMode === 'QUEUE' 
-            ? { gridTemplateColumns: '1fr' } 
+            ? 'grid-cols-1' 
             : viewMode === 'FOCUS' 
-            ? { gridTemplateColumns: '1fr' } 
-            : { gridTemplateColumns: '380px 1fr' }
-        }
+            ? 'grid-cols-1' 
+            : 'grid-cols-1 lg:grid-cols-[360px_1fr] xl:grid-cols-[380px_1fr]'
+        }`}
       >
         {/* Section 1: Left Column — Incident & Alerts Feed Queue */}
         {viewMode !== 'FOCUS' && (

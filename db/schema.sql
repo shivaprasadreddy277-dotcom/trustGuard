@@ -156,3 +156,4 @@ CREATE INDEX idx_agent_events_attack_chain_id ON agent_events(attack_chain_id) W
 CREATE UNIQUE INDEX idx_security_decisions_event_id ON security_decisions(event_id);
 CREATE INDEX idx_alerts_status_created_at ON alerts(status, created_at DESC);
 CREATE INDEX idx_simulation_runs_session_id ON simulation_runs(session_id) WHERE session_id IS NOT NULL;
+
